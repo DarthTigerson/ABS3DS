@@ -15,7 +15,10 @@ static int g_focus;            /* 0 server, 1 user, 2 password, 3 connect */
 static char g_pass[128];
 static volatile int g_busy;    /* connect job running */
 static volatile int g_result;  /* 1 ok, <0 error code, 0 none */
-static char g_msg[96];
+static char g_msg[96];      /* short message (bottom screen) */
+static char g_detail[64];   /* error code, shown on the top screen */
+static char g_hint[128];    /* what to check, shown on the top screen */
+static float g_err_t;       /* error card animation */
 static float g_ring_y;
 
 typedef struct { char server[160], user[64], pass[128]; } LoginJob;
@@ -47,8 +50,18 @@ static void do_connect(void) {
         g_result = 1;
         return;
     }
-    if (!url_valid(g_cfg.server)) { str_copy(g_msg, sizeof g_msg, "Server must look like http://host:port/path"); return; }
-    if (!g_cfg.username[0] || !g_pass[0]) { str_copy(g_msg, sizeof g_msg, "Enter your username and password"); return; }
+    g_detail[0] = 0;
+    g_err_t = 0;
+    if (!url_valid(g_cfg.server)) {
+        str_copy(g_msg, sizeof g_msg, "That server address doesn't look right");
+        str_copy(g_hint, sizeof g_hint, "It should look like http://192.168.1.10:13378 (plus any base path).");
+        return;
+    }
+    if (!g_cfg.username[0] || !g_pass[0]) {
+        str_copy(g_msg, sizeof g_msg, "Enter your username and password");
+        g_hint[0] = 0;
+        return;
+    }
     LoginJob *j = calloc(1, sizeof *j);
     if (!j) return;
     str_copy(j->server, sizeof j->server, g_cfg.server);
@@ -56,7 +69,7 @@ static void do_connect(void) {
     str_copy(j->pass, sizeof j->pass, g_pass);
     g_cfg.library_id[0] = 0; /* re-discover for a new server/user */
     g_busy = 1;
-    g_msg[0] = 0;
+    g_msg[0] = g_detail[0] = g_hint[0] = 0;
     worker_post(g_api, login_job, j);
 }
 
@@ -94,9 +107,13 @@ static void update(const Input *in, float dt) {
         const char *m = g_result == ABS_ERR_AUTH ? "Wrong username or password" :
                         g_result == ABS_ERR_NET ? "Can't reach the server" :
                         "No Audiobookshelf there (base path?)";
-        const char *d = absc_last_detail();
-        if (d[0] && g_result != ABS_ERR_AUTH) snprintf(g_msg, sizeof g_msg, "%s [%s]", m, d);
-        else str_copy(g_msg, sizeof g_msg, m);
+        str_copy(g_msg, sizeof g_msg, m);
+        str_copy(g_detail, sizeof g_detail, g_result == ABS_ERR_AUTH ? "" : absc_last_detail());
+        str_copy(g_hint, sizeof g_hint,
+                 g_result == ABS_ERR_AUTH ? "Check your Audiobookshelf username and password." :
+                 g_result == ABS_ERR_NET ? "Is the 3DS on the same Wi-Fi as the server? Guest networks usually block it." :
+                 "Check the address, including any base path such as /audiobookshelf.");
+        g_err_t = 0;
         g_result = 0;
     }
     if (in->repeat & (KEY_DOWN | KEY_CPAD_DOWN)) g_focus = g_focus < 3 ? g_focus + 1 : 3;
@@ -108,6 +125,7 @@ static void update(const Input *in, float dt) {
             if (hit(in, 12, ROW_Y(i), 296, 40)) { g_focus = i; edit(i); }
         if (hit(in, 12, 186, 296, 40)) { g_focus = 3; do_connect(); }
     }
+    g_err_t = approach(g_err_t, g_msg[0] ? 1 : 0, dt, 10);
     float target = g_focus < 3 ? ROW_Y(g_focus) : 186;
     g_ring_y = g_ring_y == 0 ? target : approach(g_ring_y, target, dt, 18);
 }
@@ -117,12 +135,34 @@ static void draw_top(void) {
     gfx_rect(0, 0, 400, 240, COL_BG);
     float t = app_time();
     float pulse = 0.5f + 0.5f * sinf(t * 1.3f);
-    /* warm glow behind the mark */
-    for (int i = 6; i >= 1; i--) gfx_circle(200, 96, 40 + i * 14, col_alpha(acc, 0.025f + 0.012f * pulse));
-    gfx_circle(200, 96, 46, acc);
-    gfx_icon(IC_BOOK, 200, 104, 46, RGBA(250, 242, 228, 255));
-    gfx_text(F_BOLD, "Shelf3DS", 200, 156, 34, COL_TEXT, AL_CENTER);
-    gfx_text(F_UI, "Audiobookshelf for Nintendo 3DS", 200, 194, 15, COL_DIM, AL_CENTER);
+    float e = ease_out_cubic(g_err_t);
+    /* the logo moves up to make room for the error card */
+    float cy = 96 - 40 * e, r = 46 - 14 * e;
+    for (int i = 6; i >= 1; i--) gfx_circle(200, cy, r - 6 + i * 14 * (1 - 0.4f * e), col_alpha(acc, 0.025f + 0.012f * pulse));
+    gfx_circle(200, cy, r, acc);
+    gfx_icon(IC_BOOK, 200, cy + r * 0.17f, r, RGBA(250, 242, 228, 255));
+    gfx_text(F_BOLD, "Shelf3DS", 200, 156 - 64 * e, 34 - 10 * e, COL_TEXT, AL_CENTER);
+    if (e < 0.99f) gfx_text(F_UI, "Audiobookshelf for Nintendo 3DS", 200, 194, 15, col_alpha(COL_DIM, 1 - e), AL_CENTER);
+    if (e <= 0.01f) return;
+
+    /* error card */
+    float x = 16, y = 128 + (1 - e) * 20, w = 368, h = 100;
+    gfx_shadow(x, y + 4, w, h, 12, 0.5f * e);
+    gfx_rrect(x, y, w, h, 12, col_alpha(COL_SURFACE2, e));
+    gfx_rrect(x, y, 5, h, 2.5f, col_alpha(COL_DANGER, e));
+    gfx_icon(IC_CLOSE, x + 26, y + 22, 16, col_alpha(COL_DANGER, e));
+    gfx_text_fit(F_BOLD, g_msg, x + 44, y + 12, 17, w - 56, col_alpha(COL_TEXT, e), AL_LEFT);
+    float ly = y + 38;
+    if (g_hint[0]) {
+        char lines[2][160];
+        int n = gfx_wrap(F_UI, g_hint, 14, w - 56, lines, 2);
+        for (int i = 0; i < n; i++, ly += 18) gfx_text(F_UI, lines[i], x + 44, ly, 14, col_alpha(COL_DIM, e), AL_LEFT);
+    }
+    if (g_detail[0]) {
+        char code[96];
+        snprintf(code, sizeof code, "Error code: %s", g_detail);
+        gfx_text(F_UI, code, x + 44, y + h - 22, 13, col_alpha(COL_FAINT, e), AL_LEFT);
+    }
 }
 
 static void field(int i, IconId ic, const char *label, const char *value, bool secret) {
@@ -167,7 +207,7 @@ static void draw_bottom(void) {
     } else {
         gfx_text(F_BOLD, "Connect", 160, 196, 17, COL_BG, AL_CENTER);
     }
-    if (g_msg[0]) gfx_text_fit(F_UI, g_msg, 160, 230 - 2, 12, 300, COL_DANGER, AL_CENTER);
+    if (g_msg[0]) gfx_text_fit(F_UI, "See the top screen for details", 160, 229, 11, 300, COL_DANGER, AL_CENTER);
 }
 
 const Screen scr_login = {enter, update, draw_top, draw_bottom};
