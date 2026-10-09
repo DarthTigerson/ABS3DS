@@ -15,6 +15,7 @@ bool sys_wifi_connected(void);
 void sys_backlight(bool on);
 bool sys_backlight_on(void);
 void sys_allow_sleep(bool allow);
+bool sys_suspended(void);      /* between the APT suspend/sleep and restore/wakeup hooks */
 bool sys_is_new3ds(void);
 const char *sys_model(void);   /* "New 2DS XL", "3DS XL", ... */
 unsigned long long sys_now_ms(void); /* unix epoch ms */

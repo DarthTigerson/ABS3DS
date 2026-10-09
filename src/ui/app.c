@@ -10,6 +10,7 @@
 #include "abs_client.h"
 #include "anim.h"
 #include "covers.h"
+#include "dbg.h"
 #include "downloads.h"
 #include "engine.h"
 #include "gfx.h"
@@ -497,7 +498,6 @@ int app_run(void) {
     C3D_RenderTarget *top = C2D_CreateScreenTarget(GFX_TOP, GFX_LEFT);
     C3D_RenderTarget *bot = C2D_CreateScreenTarget(GFX_BOTTOM, GFX_LEFT);
     hidSetRepeatParameters(22, 6);
-    APT_SetAppCpuTimeLimit(30);
 
     mkdir("sdmc:/3ds", 0777);
     mkdir(DATA_DIR, 0777);
@@ -526,7 +526,12 @@ int app_run(void) {
     }
 
     u64 last = osGetTime();
+    bool was_suspended = false;
     while (aptMainLoop()) {
+        if (was_suspended != sys_suspended()) {
+            dbg("main loop: %s", sys_suspended() ? "suspended" : "running again");
+            was_suspended = sys_suspended();
+        }
         u64 now = osGetTime();
         float dt = (now - last) / 1000.0f;
         if (dt > 0.1f) dt = 0.1f;

@@ -5,6 +5,7 @@
 #include <string.h>
 
 #include "httpsrc.h"
+#include "sys.h"
 #include "sonic.h"
 #include "timeline.h"
 
@@ -312,6 +313,11 @@ static void engine_thread(void *arg) {
     (void)arg;
     E.window_start = svcGetSystemTick();
     while (!E.quit) {
+        if (sys_suspended()) {
+            /* HOME Menu / sleep: leave NDSP alone until we're restored */
+            svcSleepThread(20000000LL);
+            continue;
+        }
         process_commands();
         EngineState s = E.state;
         if (s == ENG_PLAYING || s == ENG_BUFFERING || s == ENG_PAUSED) {
