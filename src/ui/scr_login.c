@@ -109,6 +109,7 @@ static void update(const Input *in, float dt) {
                         "No Audiobookshelf there (base path?)";
         str_copy(g_msg, sizeof g_msg, m);
         str_copy(g_detail, sizeof g_detail, g_result == ABS_ERR_AUTH ? "" : absc_last_detail());
+        if (g_result != ABS_ERR_AUTH && !g_detail[0]) str_copy(g_detail, sizeof g_detail, "unknown");
         str_copy(g_hint, sizeof g_hint,
                  g_result == ABS_ERR_AUTH ? "Check your Audiobookshelf username and password." :
                  g_result == ABS_ERR_NET ? "Is the 3DS on the same Wi-Fi as the server? Guest networks usually block it." :

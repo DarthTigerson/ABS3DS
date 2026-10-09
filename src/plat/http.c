@@ -64,7 +64,9 @@ static void learn_clock(httpcContext *c) {
 }
 
 int http_init(void) {
-    Result r = httpcInit(0);
+    /* the HTTP sysmodule takes POST bodies through this shared memory block;
+     * with none, AddPostData* fails on real hardware (emulators don't care) */
+    Result r = httpcInit(0x10000);
     if (R_FAILED(r)) dbg("httpcInit failed %08lx", (unsigned long)r);
     return R_SUCCEEDED(r) ? 0 : -1;
 }
@@ -114,11 +116,16 @@ static int begin(httpcContext *c, HTTPC_RequestMethod m, const char *url, const 
         httpcAddRequestHeaderField(c, "Content-Type", "application/json");
         /* httpcAddPostDataRaw wants a u32-aligned buffer */
         u32 *aligned = malloc((body_len + 3) & ~3u);
-        if (!aligned) { httpcCloseContext(c); return -1; }
+        if (!aligned) { snprintf(g_err, sizeof g_err, "nomem"); httpcCloseContext(c); return -1; }
         memcpy(aligned, body, body_len);
         Result r = httpcAddPostDataRaw(c, aligned, body_len);
         free(aligned);
-        if (R_FAILED(r)) { httpcCloseContext(c); return -1; }
+        if (R_FAILED(r)) {
+            snprintf(g_err, sizeof g_err, "post %08lx", (unsigned long)r);
+            dbg("post data for %s failed %08lx", url, (unsigned long)r);
+            httpcCloseContext(c);
+            return -1;
+        }
     }
     bool began = R_SUCCEEDED(rr = httpcBeginRequest(c));
     if (!began || R_FAILED(rr = httpcGetResponseStatusCodeTimeout(c, status, 15000000000ULL))) {
@@ -191,6 +198,8 @@ int http_request(const char *method, const char *url, const char *const *headers
         }
         httpcCloseContext(&c);
         if (!buf || (R_FAILED(r) && r != (Result)HTTPC_RESULTCODE_DOWNLOADPENDING)) {
+            snprintf(g_err, sizeof g_err, buf ? "body %08lx" : "nomem", (unsigned long)r);
+            dbg("body of %s failed %08lx after %lu bytes", cur, (unsigned long)r, (unsigned long)len);
             free(buf);
             out->status = -2;
             return -1;
@@ -201,6 +210,7 @@ int http_request(const char *method, const char *url, const char *const *headers
         out->len = len;
         return 0;
     }
+    snprintf(g_err, sizeof g_err, "redirects");
     out->status = -3;
     return -1;
 }
