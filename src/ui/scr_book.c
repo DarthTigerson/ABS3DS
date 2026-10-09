@@ -165,6 +165,10 @@ static void draw_bottom(void) {
     gfx_text(F_UI, "Back", 24, 7, 14, COL_DIM, AL_LEFT);
     gfx_text_fit(F_SYS, g_sel.title, 308, 8, 13, 200, COL_FAINT, AL_RIGHT);
 
+    /* focus ring (behind the buttons) */
+    float rh = g_focus == 0 ? 42 : 36;
+    gfx_focus_ring(12, g_ring_y, 296, rh, rh / 2, 2, col_alpha(COL_TEXT, 0.75f));
+
     /* play button */
     bool resume = g_sel.current_time > 5 && !g_sel.finished;
     char lbl[64];
@@ -198,9 +202,6 @@ static void draw_bottom(void) {
     gfx_icon(ic, 160 - dw / 2 - 12, BTN_DL_Y + 18, 13, st == DL_DONE && !g_confirm_delete ? COL_OK : COL_TEXT);
     gfx_text(F_UI, dl, 160 + 6, BTN_DL_Y + 9, 14, g_confirm_delete ? COL_DANGER : COL_TEXT, AL_CENTER);
 
-    /* focus ring */
-    float rh = g_focus == 0 ? 42 : 36;
-    gfx_rrect_outline(9, g_ring_y - 3, 302, rh + 6, rh / 2 + 3, 2, col_alpha(COL_TEXT, 0.7f), RGBA(0, 0, 0, 0));
 
     /* meta */
     if (g_have_detail) {

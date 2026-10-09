@@ -15,6 +15,7 @@ struct Worker {
 };
 
 Worker *g_api;
+Worker *g_sync;
 
 Thread thread_spawn(ThreadFunc fn, void *arg, int stack, int prio, int core) {
     Thread t = threadCreate(fn, arg, stack, prio, core, false);

@@ -55,6 +55,7 @@ typedef struct {
 } OpenResult;
 
 static OpenResult *g_open_result;
+static struct { int gen; char id[48]; bool ready; } g_late_session;
 
 static void auth_cb(char *out, unsigned n) { absc_auth_header(out, n); }
 
@@ -73,18 +74,30 @@ static void open_job(void *ud) {
     bool downloaded = dl_is_done(id);
     PlaySession s;
     int prc = ABS_ERR_NET;
-    if (absc_have_session()) prc = absc_play(id, sys_model(), &s);
     if (downloaded) {
+        /* play from the SD card at once; the server session is attached later */
         r->local = true;
         if (dl_load_meta(id, &r->book) != 0) { r->rc = -1; str_copy(r->msg, sizeof r->msg, "Download is damaged"); }
-        if (prc == ABS_OK) {
-            str_copy(r->session, sizeof r->session, s.id);
-            r->start = resume_position(id, s.current_time, j->hint.progress_updated);
+        r->start = resume_position(id, j->hint.current_time, j->hint.progress_updated);
+        if (r->rc == 0 && r->book.duration > 0 && r->start > r->book.duration - 5) r->start = 0;
+        int gen = r->gen;
+        LightLock_Lock(&P.lock);
+        if (g_open_result) { book_detail_free(&g_open_result->book); free(g_open_result); }
+        g_open_result = r;
+        LightLock_Unlock(&P.lock);
+        if (absc_have_session() && absc_play(id, sys_model(), &s) == ABS_OK) {
+            LightLock_Lock(&P.lock);
+            g_late_session.gen = gen;
+            str_copy(g_late_session.id, sizeof g_late_session.id, s.id);
+            g_late_session.ready = true;
+            LightLock_Unlock(&P.lock);
             book_detail_free(&s.book);
-        } else {
-            r->start = resume_position(id, j->hint.current_time, j->hint.progress_updated);
         }
-    } else if (prc == ABS_OK) {
+        free(j);
+        return;
+    }
+    if (absc_have_session()) prc = absc_play(id, sys_model(), &s);
+    if (prc == ABS_OK) {
         r->book = s.book;
         str_copy(r->session, sizeof r->session, s.id);
         r->start = resume_position(id, s.current_time, j->hint.progress_updated);
@@ -136,6 +149,15 @@ static void build_sources(const OpenResult *r, PlayableBook *pb) {
     }
 }
 
+static void take_late_session(void) {
+    LightLock_Lock(&P.lock);
+    if (g_late_session.ready && !g_open_result) {
+        g_late_session.ready = false;
+        if (g_late_session.gen == P.open_gen && P.has_book) str_copy(P.session, sizeof P.session, g_late_session.id);
+    }
+    LightLock_Unlock(&P.lock);
+}
+
 static void take_open_result(void) {
     LightLock_Lock(&P.lock);
     OpenResult *r = g_open_result;
@@ -146,6 +168,13 @@ static void take_open_result(void) {
     if (r->rc != 0) {
         P.phase = PL_FAILED;
         str_copy(P.error, sizeof P.error, r->msg);
+        free(r);
+        return;
+    }
+    if (!engine_available()) {
+        P.phase = PL_FAILED;
+        str_copy(P.error, sizeof P.error, "No audio: run DSP1 once to dump the DSP firmware");
+        book_detail_free(&r->book);
         free(r);
         return;
     }
@@ -225,7 +254,7 @@ static void report(bool close) {
     j->e = e;
     j->listened = sync_take_listened(&P.sync);
     j->close = close;
-    worker_post(g_api, sync_job, j);
+    if (!worker_post(g_sync, sync_job, j)) free(j);
 }
 
 static void close_session_async(void) {
@@ -257,7 +286,7 @@ static void flush_job(void *ud) {
 
 void player_flush_queue(void) {
     P.last_flush = osGetTime();
-    worker_post(g_api, flush_job, NULL);
+    if (worker_pending(g_sync) < 4) worker_post(g_sync, flush_job, NULL);
 }
 
 /* ---- public -------------------------------------------------------------------- */
@@ -277,7 +306,7 @@ void player_exit(void) {
         engine_pause();
         report(true);
         /* give the close request a moment to go out */
-        for (int i = 0; i < 150 && worker_pending(g_api); i++) svcSleepThread(20000000LL);
+        for (int i = 0; i < 150 && worker_pending(g_sync); i++) svcSleepThread(20000000LL);
         engine_stop();
         book_detail_free(&P.book);
         P.has_book = false;
@@ -393,6 +422,7 @@ void player_on_suspend(void) {
 
 void player_tick(double dt) {
     take_open_result();
+    take_late_session();
     if (!P.has_book || P.phase != PL_READY) return;
     bool playing = engine_is_playing();
     double pos = engine_position();

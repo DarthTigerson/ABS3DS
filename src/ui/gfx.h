@@ -35,6 +35,9 @@ void gfx_gradient_v(float x, float y, float w, float h, u32 top, u32 bottom);
 void gfx_gradient_h(float x, float y, float w, float h, u32 left, u32 right);
 void gfx_rrect(float x, float y, float w, float h, float r, u32 c);
 void gfx_rrect_outline(float x, float y, float w, float h, float r, float t, u32 c, u32 inner);
+/* Focus ring: a rounded rect t px larger than (x,y,w,h). Draw it *before*
+ * the element so the element covers the middle. */
+void gfx_focus_ring(float x, float y, float w, float h, float r, float t, u32 c);
 void gfx_circle(float cx, float cy, float r, u32 c);
 void gfx_shadow(float x, float y, float w, float h, float spread, float alpha);
 void gfx_icon(IconId icon, float cx, float cy, float size, u32 c);

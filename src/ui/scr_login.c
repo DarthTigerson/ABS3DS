@@ -40,6 +40,13 @@ static void enter(void) {
 static void do_connect(void) {
     if (g_busy) return;
     url_normalize(g_cfg.server, sizeof g_cfg.server);
+    if (!strcmp(g_cfg.server, "http://demo")) {
+        /* demo mode: a fake library to try the UI without a server */
+        str_copy(g_cfg.refresh, sizeof g_cfg.refresh, "demo");
+        if (!g_cfg.username[0]) str_copy(g_cfg.username, sizeof g_cfg.username, "demo");
+        g_result = 1;
+        return;
+    }
     if (!url_valid(g_cfg.server)) { str_copy(g_msg, sizeof g_msg, "Server must look like http://host:port/path"); return; }
     if (!g_cfg.username[0] || !g_pass[0]) { str_copy(g_msg, sizeof g_msg, "Enter your username and password"); return; }
     LoginJob *j = calloc(1, sizeof *j);
@@ -85,8 +92,8 @@ static void update(const Input *in, float dt) {
     }
     if (g_result < 0) {
         str_copy(g_msg, sizeof g_msg, g_result == ABS_ERR_AUTH ? "Wrong username or password" :
-                 g_result == ABS_ERR_NET ? "Can't reach the server. Check the address and Wi-Fi." :
-                 "That doesn't look like an Audiobookshelf server");
+                 g_result == ABS_ERR_NET ? "Can't reach the server. Is it on? Check the address and Wi-Fi." :
+                 "No Audiobookshelf there. Missing a base path like /audiobookshelf?");
         g_result = 0;
     }
     if (in->repeat & (KEY_DOWN | KEY_CPAD_DOWN)) g_focus = g_focus < 3 ? g_focus + 1 : 3;
@@ -137,14 +144,15 @@ static void draw_bottom(void) {
     gfx_rect(0, 0, 320, 240, COL_BG);
     gfx_text(F_BOLD, "Sign in", 16, 10, 20, COL_TEXT, AL_LEFT);
     gfx_text(F_UI, "to your Audiobookshelf server", 104, 14, 13, COL_DIM, AL_LEFT);
+    /* focus ring slides between rows (drawn behind them) */
+    float rh = g_focus == 3 ? 40 : 40;
+    gfx_focus_ring(12, g_ring_y, 296, rh, g_focus == 3 ? 20 : 10, 2, col_alpha(COL_AMBER, 0.9f));
     field(0, IC_SERVER, "SERVER", g_cfg.server, false);
     field(1, IC_USER, "USERNAME", g_cfg.username, false);
     field(2, IC_LOCK, "PASSWORD", g_pass, true);
-    /* focus ring slides between rows */
-    float ry = g_ring_y, rh = 40;
-    gfx_rrect_outline(10, ry - 2, 300, rh + 4, 12, 2, col_alpha(COL_AMBER, 0.9f), RGBA(0, 0, 0, 0));
     /* connect */
     bool busy = g_busy;
+    if (g_focus == 3) gfx_focus_ring(12, 186, 296, 40, 20, 2, COL_TEXT);
     gfx_rrect(12, 186, 296, 40, 20, busy ? col_mix(COL_AMBER, COL_BG, 0.4f) : COL_AMBER);
     if (busy) {
         float t = app_time() * 6;

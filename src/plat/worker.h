@@ -14,8 +14,9 @@ void worker_destroy(Worker *w);
 bool worker_post(Worker *w, JobFn fn, void *ud);
 int worker_pending(Worker *w);
 
-/* the shared API worker */
+/* the shared API worker (UI-driven requests) and the progress-sync worker */
 extern Worker *g_api;
+extern Worker *g_sync;
 
 /* thread creation on the system core with fallback */
 Thread thread_spawn(ThreadFunc fn, void *arg, int stack, int prio, int core);

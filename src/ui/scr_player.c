@@ -139,7 +139,7 @@ static void update(const Input *in, float dt) {
             else if (x > 268) { player_chapter(1); press(4); }
         }
         if (y > CHIP_Y - 4 && y < CHIP_Y + 34) {
-            int i = (int)((x - 10) / 75);
+            int i = (int)((x - 8) / 77);
             if (i >= 0 && i < 4) chip_action(i);
         }
     }
@@ -317,8 +317,8 @@ static void draw_bottom(void) {
     /* play/pause with a glow while playing */
     float s = 1 - g_press[2] * 0.1f;
     if (g_play_morph > 0.01f) for (int i = 3; i >= 1; i--) gfx_circle(160, CY, (38 + i * 5) * s, col_alpha(acc, 0.07f * g_play_morph));
+    if (tf) gfx_circle(160, CY, 41 * s, col_alpha(COL_TEXT, 0.55f));
     gfx_circle(160, CY, 38 * s, acc);
-    if (tf) gfx_rrect_outline(160 - 43 * s, CY - 43 * s, 86 * s, 86 * s, 43 * s, 2, col_alpha(COL_TEXT, 0.5f), RGBA(0, 0, 0, 0));
     EngineState es = engine_state();
     if (es == ENG_LOADING || (es == ENG_BUFFERING && player_playing())) {
         float t = app_time() * 6;
@@ -352,18 +352,18 @@ static void draw_bottom(void) {
     char sp[16], sl[24];
     snprintf(sp, sizeof sp, "%.2g\xC3\x97", player_speed());
     player_sleep_label(sl, sizeof sl);
-    const char *labels[4] = {sp, sl, "Chapters", "Screen off"};
+    const char *labels[4] = {sp, sl, "Chapters", "Screen"};
     IconId icons[4] = {IC_SPEED, IC_MOON, IC_LIST, IC_SCREEN};
     for (int i = 0; i < 4; i++) {
-        float x = 10 + i * 75, w = 70;
+        float x = 8 + i * 77, w = 73;
         bool active = (i == 0 && fabsf(player_speed() - 1) > 0.01f) || (i == 1 && player_sleep()->mode != SLEEP_OFF);
         bool focus = g_chip_focus == i;
-        gfx_rrect(x, CHIP_Y, w, 32, 10, active ? col_alpha(acc, 0.28f) : COL_SURFACE);
-        if (focus) gfx_rrect_outline(x - 2, CHIP_Y - 2, w + 4, 36, 12, 2, col_alpha(COL_TEXT, 0.7f), RGBA(0, 0, 0, 0));
-        gfx_icon(icons[i], x + 13, CHIP_Y + 16, 13, active ? acc : COL_DIM);
-        gfx_text_fit(F_UI, labels[i], x + 23, CHIP_Y + 8, 12, w - 26, active ? COL_TEXT : COL_DIM, AL_LEFT);
+        if (focus) gfx_focus_ring(x, CHIP_Y, w, 32, 10, 2, col_alpha(COL_TEXT, 0.7f));
+        gfx_rrect(x, CHIP_Y, w, 32, 10, active ? col_mix(COL_SURFACE, acc, 0.3f) : COL_SURFACE);
+        gfx_icon(icons[i], x + 12, CHIP_Y + 16, 13, active ? acc : COL_DIM);
+        gfx_text_fit(F_UI, labels[i], x + 22, CHIP_Y + 9, 11, w - 25, active ? COL_TEXT : COL_DIM, AL_LEFT);
     }
-    gfx_text(F_UI, "L/R chapter \xC2\xB7 \xE2\x86\x90/\xE2\x86\x92 skip \xC2\xB7 X chapters", 160, 222, 10.5f, col_alpha(COL_FAINT, 0.8f), AL_CENTER);
+    gfx_text(F_UI, "L/R chapter \xC2\xB7 left/right skip \xC2\xB7 X chapters", 160, 222, 10.5f, col_alpha(COL_FAINT, 0.8f), AL_CENTER);
     draw_sheet();
 }
 

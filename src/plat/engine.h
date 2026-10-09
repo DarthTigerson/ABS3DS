@@ -18,6 +18,7 @@ typedef struct {
 } PlayableBook;
 
 int engine_init(void);
+bool engine_available(void);    /* false when NDSP failed (no DSP firmware dump) */
 void engine_exit(void);
 void engine_set_auth(void (*auth)(char *, unsigned));
 

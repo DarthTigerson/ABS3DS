@@ -2,6 +2,7 @@
  * once on 401 (rotating the stored refresh token). Thread-safe. */
 #ifndef ABS3DS_ABS_CLIENT_H
 #define ABS3DS_ABS_CLIENT_H
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 
@@ -23,6 +24,7 @@ void absc_init(Config *cfg, void (*save_cfg)(void));
 int absc_status(const char *server);                      /* GET /status */
 int absc_login(const char *user, const char *pass);        /* stores tokens */
 int absc_have_session(void);                               /* refresh token present */
+bool absc_reachable(void);                                 /* false for a while after a network error */
 void absc_logout(void);
 /* "Authorization: Bearer <token>" (empty string if none) */
 void absc_auth_header(char *out, size_t n);

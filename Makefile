@@ -176,10 +176,10 @@ $(BUILD):
 	@mkdir -p $@
 
 romfs/ui.bcfnt: assets/fonts/Manrope-500.ttf
-	@mkdir -p romfs && mkbcfnt -s 22 -o $@ $<
+	@mkdir -p romfs && mkbcfnt -s 17 -o $@ $<
 
 romfs/ui_bold.bcfnt: assets/fonts/Manrope-700.ttf
-	@mkdir -p romfs && mkbcfnt -s 30 -o $@ $<
+	@mkdir -p romfs && mkbcfnt -s 24 -o $@ $<
 
 ifneq ($(GFXBUILD),$(BUILD))
 $(GFXBUILD):

@@ -9,7 +9,7 @@
 #include "strutil.h"
 #include "texswz.h"
 
-/* A8 atlas layout (512x256): icons in 48px cells (8 per row) from (0,0);
+/* mask atlas layout (512x256): icons in 48px cells (8 per row) from (0,0);
  * a hard disc at (384,0) and a soft (shadow) disc at (448,0), 64x64 each. */
 #define AT_W 512
 #define AT_H 256
@@ -20,7 +20,7 @@
 
 static C3D_Tex g_atlas;
 static Tex3DS_SubTexture g_icon_sub[IC_COUNT];
-static Tex3DS_SubTexture g_disc_q[4], g_soft_q[4], g_disc_full, g_soft_edge_h, g_soft_edge_v, g_soft_center;
+static Tex3DS_SubTexture g_disc_q[4], g_soft_q[4], g_disc_full, g_soft_top, g_soft_bottom, g_soft_left, g_soft_right;
 static C2D_Font g_font[2];
 static C2D_TextBuf g_buf;
 
@@ -53,11 +53,12 @@ static void sub_px(Tex3DS_SubTexture *s, float x, float y, float w, float h) {
     s->bottom = 1.0f - (y + h) / AT_H;
 }
 
-static void swizzle_a8(const u8 *src, int w, int h, u8 *dst) {
+/* white RGBA8 with the mask in alpha: tints correctly in every C2D tint mode */
+static void swizzle_mask(const u8 *src, int w, int h, u32 *dst) {
     for (int y = 0; y < h; y++)
         for (int x = 0; x < w; x++) {
             u32 tile = (u32)((y >> 3) * (w >> 3) + (x >> 3));
-            dst[tile * 64 + morton8(x & 7, y & 7)] = src[y * w + x];
+            dst[tile * 64 + morton8(x & 7, y & 7)] = 0xFFFFFF00u | src[y * w + x];
         }
 }
 
@@ -81,8 +82,8 @@ static void build_atlas(void) {
             float s = t >= 1 ? 0 : (1 - t) * (1 - t) * (3 - 2 * (1 - t)) ;
             lin[y * AT_W + SOFT_X + x] = (u8)(s * 255);
         }
-    if (C3D_TexInit(&g_atlas, AT_W, AT_H, GPU_A8)) {
-        swizzle_a8(lin, AT_W, AT_H, g_atlas.data);
+    if (C3D_TexInit(&g_atlas, AT_W, AT_H, GPU_RGBA8)) {
+        swizzle_mask(lin, AT_W, AT_H, g_atlas.data);
         C3D_TexFlush(&g_atlas);
         C3D_TexSetFilter(&g_atlas, GPU_LINEAR, GPU_LINEAR);
     }
@@ -98,9 +99,11 @@ static void build_atlas(void) {
     sub_px(&g_soft_q[2], SOFT_X, h, h, h);
     sub_px(&g_soft_q[3], SOFT_X + h, h, h, h);
     sub_px(&g_disc_full, DISC_X, 0, DISC, DISC);
-    sub_px(&g_soft_edge_h, SOFT_X + h - 0.5f, 0, 1, h); /* vertical falloff column (top half) */
-    sub_px(&g_soft_edge_v, SOFT_X, h - 0.5f, h, 1);      /* horizontal falloff row (left half) */
-    sub_px(&g_soft_center, SOFT_X + h - 0.5f, h - 0.5f, 1, 1);
+    /* 1-texel strips through the centre of the soft disc, one per side */
+    sub_px(&g_soft_top, SOFT_X + h - 0.5f, 0, 1, h);
+    sub_px(&g_soft_bottom, SOFT_X + h - 0.5f, h, 1, h);
+    sub_px(&g_soft_left, SOFT_X, h - 0.5f, h, 1);
+    sub_px(&g_soft_right, SOFT_X + h, h - 0.5f, h, 1);
 }
 
 void gfx_init(void) {
@@ -161,6 +164,10 @@ void gfx_rrect_outline(float x, float y, float w, float h, float r, float t, u32
     gfx_rrect(x + t, y + t, w - 2 * t, h - 2 * t, r - t > 0 ? r - t : 0, inner);
 }
 
+void gfx_focus_ring(float x, float y, float w, float h, float r, float t, u32 c) {
+    gfx_rrect(x - t, y - t, w + 2 * t, h + 2 * t, r + t, c);
+}
+
 void gfx_circle(float cx, float cy, float r, u32 c) {
     draw_sub(&g_disc_full, cx - r, cy - r, 2 * r, 2 * r, c);
 }
@@ -174,22 +181,12 @@ void gfx_shadow(float x, float y, float w, float h, float s, float alpha) {
     draw_sub(&g_soft_q[3], x + w - s, y + h - s, 2 * s, 2 * s, c);
     /* edges */
     if (w > 2 * s) {
-        C2D_Image img = {&g_atlas, &g_soft_edge_h};
-        C2D_ImageTint t;
-        C2D_PlainImageTint(&t, c, 1.0f);
-        C2D_DrawParams p = {{x + s, y - s, w - 2 * s, 2 * s}, {0, 0}, 0.5f, 0};
-        C2D_DrawImage(img, &p, &t);
-        C2D_DrawParams q = {{x + s, y + h + s, w - 2 * s, -2 * s}, {0, 0}, 0.5f, 0};
-        C2D_DrawImage(img, &q, &t);
+        draw_sub(&g_soft_top, x + s, y - s, w - 2 * s, 2 * s, c);
+        draw_sub(&g_soft_bottom, x + s, y + h - s, w - 2 * s, 2 * s, c);
     }
     if (h > 2 * s) {
-        C2D_Image img = {&g_atlas, &g_soft_edge_v};
-        C2D_ImageTint t;
-        C2D_PlainImageTint(&t, c, 1.0f);
-        C2D_DrawParams p = {{x - s, y + s, 2 * s, h - 2 * s}, {0, 0}, 0.5f, 0};
-        C2D_DrawImage(img, &p, &t);
-        C2D_DrawParams q = {{x + w + s, y + s, -2 * s, h - 2 * s}, {0, 0}, 0.5f, 0};
-        C2D_DrawImage(img, &q, &t);
+        draw_sub(&g_soft_left, x - s, y + s, 2 * s, h - 2 * s, c);
+        draw_sub(&g_soft_right, x + w - s, y + s, 2 * s, h - 2 * s, c);
     }
     if (w > 2 * s && h > 2 * s) gfx_rect(x + s, y + s, w - 2 * s, h - 2 * s, c);
 }
@@ -225,10 +222,18 @@ static C2D_Font font_of(FontId f) {
     return ft; /* NULL (system font) if the bundled font failed to load */
 }
 
+/* px is the em size. Divisors calibrated on screen for the mkbcfnt output
+ * (ui: -s 17, bold: -s 24) so both give a ~10px cap height at px = 14;
+ * the system font's line feed is ~1.3 em. */
+#define UI_PT 20.5f
+#define BOLD_PT 18.8f
 static float scale_of(FontId f, float px) {
-    FINF_s *info = C2D_FontGetInfo(font_of(f));
+    C2D_Font ft = font_of(f);
+    if (ft && f == F_UI) return px / UI_PT;
+    if (ft && f == F_BOLD) return px / BOLD_PT;
+    FINF_s *info = C2D_FontGetInfo(ft);
     float lf = info && info->lineFeed ? info->lineFeed : 30;
-    return px / lf;
+    return px * 1.3f / lf;
 }
 
 static bool parse(FontId f, const char *s, C2D_Text *t) {
@@ -375,6 +380,7 @@ void gfx_placeholder_cover(const char *title, float x, float y, float size) {
         memcpy(initial, title, l);
         initial[l] = 0;
     }
-    gfx_text(F_SYS, initial, x + size / 2, y + size * 0.22f, size * 0.62f, col_alpha(COL_TEXT, 0.85f), AL_CENTER);
+    bool ascii = (u8)initial[0] < 0x80;
+    gfx_text(ascii ? F_BOLD : F_SYS, initial, x + size / 2, y + size * 0.24f, size * 0.42f, col_alpha(COL_TEXT, 0.85f), AL_CENTER);
     gfx_icon(IC_BOOK, x + size - size * 0.16f, y + size - size * 0.16f, size * 0.16f, col_alpha(COL_TEXT, 0.5f));
 }

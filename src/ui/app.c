@@ -124,10 +124,45 @@ static void offline_books(LibResult *r) {
     free(dl);
 }
 
+static void demo_books(LibResult *r) {
+    static const char *t[][3] = {
+        {"Project Hail Mary", "Andy Weir", ""}, {"The Hobbit", "J.R.R. Tolkien", "Middle-earth"},
+        {"Dune", "Frank Herbert", "Dune #1"}, {"Circe", "Madeline Miller", ""},
+        {"The Name of the Wind", "Patrick Rothfuss", "Kingkiller Chronicle #1"}, {"Sapiens", "Yuval Noah Harari", ""},
+        {"Mistborn: The Final Empire", "Brandon Sanderson", "Mistborn #1"}, {"Educated", "Tara Westover", ""},
+        {"L\xE2\x80\x99\xC3\x89tranger", "Albert Camus", ""}, {"Children of Time", "Adrian Tchaikovsky", ""},
+        {"The Martian", "Andy Weir", ""}, {"Piranesi", "Susanna Clarke", ""},
+    };
+    int n = sizeof t / sizeof t[0];
+    r->books = calloc(n, sizeof(BookSummary));
+    if (!r->books) return;
+    for (int i = 0; i < n; i++) {
+        BookSummary *b = &r->books[i];
+        snprintf(b->id, sizeof b->id, "demo_%d", i);
+        str_copy(b->title, sizeof b->title, t[i][0]);
+        str_copy(b->author, sizeof b->author, t[i][1]);
+        str_copy(b->series, sizeof b->series, t[i][2]);
+        b->duration = 3600.0 * (5 + (i * 7) % 20) + 600 * i;
+        b->added_at = 1700000000000ULL + i * 86400000ULL;
+        if (i % 3 == 0) { b->progress = 0.15f + 0.2f * (i % 4); b->current_time = b->duration * b->progress; }
+    }
+    r->n = n;
+    for (int i = 0; i < n && r->ncont < 4; i++)
+        if (r->books[i].progress > 0) str_copy(r->cont[r->ncont++], 40, r->books[i].id);
+}
+
 static void lib_job(void *ud) {
     (void)ud;
     LibResult *r = calloc(1, sizeof *r);
     if (!r) return;
+    if (!strcmp(g_cfg.server, "http://demo")) {
+        demo_books(r);
+        r->rc = ABS_OK;
+        LightLock_Lock(&g_lib_lock);
+        g_lib_result = r;
+        LightLock_Unlock(&g_lib_lock);
+        return;
+    }
     r->rc = absc_fetch_library(&r->books, &r->n, lib_progress);
     if (r->rc == ABS_OK) {
         int k = absc_fetch_in_progress(r->cont, 24);
@@ -260,7 +295,10 @@ void app_draw_backdrop(const char *id, float dim) {
 static void draw_battery(float x, float y) {
     int lvl = sys_battery();
     u32 c = lvl <= 1 && !sys_charging() ? COL_DANGER : col_alpha(COL_TEXT, 0.85f);
-    gfx_rrect_outline(x, y, 22, 11, 3, 1.5f, c, RGBA(0, 0, 0, 0));
+    gfx_rect(x, y, 22, 1.5f, c);
+    gfx_rect(x, y + 9.5f, 22, 1.5f, c);
+    gfx_rect(x, y, 1.5f, 11, c);
+    gfx_rect(x + 20.5f, y, 1.5f, 11, c);
     gfx_rect(x + 22, y + 3.5f, 2, 4, c);
     float w = 18.0f * (lvl > 5 ? 5 : lvl) / 5.0f;
     if (w > 0) gfx_rrect(x + 2, y + 2, w, 7, 1.5f, sys_charging() ? COL_OK : c);
@@ -479,6 +517,7 @@ int app_run(void) {
     if (g_cfg.clock_known) http_set_clock_offset(g_cfg.clock_offset_ms);
     absc_init(&g_cfg, app_save_cfg);
     g_api = worker_create(0x30, 1, 64 * 1024);
+    g_sync = worker_create(0x31, 1, 32 * 1024);
     engine_init();
     dl_init();
     covers_init();
@@ -549,6 +588,7 @@ int app_run(void) {
     dl_exit();
     engine_exit();
     worker_destroy(g_api);
+    worker_destroy(g_sync);
     http_exit();
     app_save_cfg();
     app_save_queue();

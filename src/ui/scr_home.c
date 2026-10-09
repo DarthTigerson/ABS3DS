@@ -314,6 +314,7 @@ static void draw_library(float top, float a) {
         gfx_text(F_UI, cnt, 160, hy + 5, 12, COL_FAINT, AL_CENTER);
     }
     int n = g_lib.norder;
+    if (n) gfx_focus_ring(g_ring_x, top + g_ring_y - s + 4, COVER, COVER, 4, 3, app_accent());
     int first = (int)((s - HEAD_H) / CELL_H) * GRID_COLS;
     if (first < 0) first = 0;
     float bottom = content_bottom();
@@ -333,10 +334,7 @@ static void draw_library(float top, float a) {
         gfx_text_fit(F_SYS, b->title, x + COVER / 2, y + COVER + 8, 12, COVER + 10, f ? COL_TEXT : COL_DIM, AL_CENTER);
         gfx_text_fit(F_SYS, b->author, x + COVER / 2, y + COVER + 22, 10.5f, COVER + 6, COL_FAINT, AL_CENTER);
     }
-    if (n) {
-        float rx = g_ring_x, ry = top + g_ring_y - s + 4;
-        gfx_rrect_outline(rx - 3, ry - 3, COVER + 6, COVER + 6, 6, 2.5f, app_accent(), RGBA(0, 0, 0, 0));
-    } else if (!g_lib.loading) {
+    if (!n && !g_lib.loading) {
         gfx_text(F_UI, g_lib.query[0] ? "No matches. Press B to clear." : "Your library is empty", 160, top + 70, 14, COL_DIM, AL_CENTER);
     }
 }

@@ -352,9 +352,13 @@ static void engine_thread(void *arg) {
     reset_output();
 }
 
+static bool g_ndsp_ok;
+bool engine_available(void) { return g_ndsp_ok; }
+
 int engine_init(void) {
     memset(&E, 0, sizeof E);
     if (R_FAILED(ndspInit())) return -1;
+    g_ndsp_ok = true;
     ndspSetOutputMode(NDSP_OUTPUT_STEREO);
     LightLock_Init(&E.lock);
     for (int i = 0; i < NBUF; i++) {
@@ -370,7 +374,7 @@ int engine_init(void) {
 }
 
 void engine_exit(void) {
-    if (!E.th) return;
+    if (!E.th) { if (g_ndsp_ok) ndspExit(); g_ndsp_ok = false; return; }
     if (E.st) stream_interrupt(E.st, 1);
     E.quit = true;
     threadJoin(E.th, U64_MAX);

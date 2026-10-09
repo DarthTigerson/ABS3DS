@@ -16,6 +16,12 @@ static char g_access[1024];
 static LightLock g_lock;
 static LightLock g_refresh_lock; /* refresh tokens rotate: only one refresh at a time */
 static volatile int g_gen;       /* bumped whenever a new access token is stored */
+static volatile u64 g_offline_until; /* fail fast after a network error */
+
+#define OFFLINE_BACKOFF_MS 20000
+static bool offline_now(void) { return osGetTime() < g_offline_until; }
+static void note_net(int ok) { g_offline_until = ok ? 0 : osGetTime() + OFFLINE_BACKOFF_MS; }
+bool absc_reachable(void) { return !offline_now(); }
 
 void absc_init(Config *cfg, void (*save_cfg)(void)) {
     g_cfg = cfg;
@@ -52,7 +58,8 @@ int absc_status(const char *server) {
     char url[256];
     if (url_join(server, "/status", url, sizeof url) < 0) return ABS_ERR_SERVER;
     HttpResp r;
-    if (http_request("GET", url, NULL, NULL, 0, 64 * 1024, &r) != 0) return ABS_ERR_NET;
+    if (http_request("GET", url, NULL, NULL, 0, 64 * 1024, &r) != 0) { note_net(0); return ABS_ERR_NET; }
+    note_net(1);
     int ok = r.status == 200 && r.data && strstr(r.data, "audiobookshelf");
     http_resp_free(&r);
     return ok ? ABS_OK : ABS_ERR_SERVER;
@@ -77,7 +84,8 @@ int absc_login(const char *user, const char *pass) {
     if (abs_build_login_body(user, pass, body, sizeof body) < 0) return ABS_ERR_SERVER;
     const char *hdr[] = {"x-return-tokens: true", NULL};
     HttpResp r;
-    if (http_request("POST", url, hdr, body, strlen(body), 1 << 20, &r) != 0) return ABS_ERR_NET;
+    if (http_request("POST", url, hdr, body, strlen(body), 1 << 20, &r) != 0) { note_net(0); return ABS_ERR_NET; }
+    note_net(1);
     int rc = r.status == 200 ? store_tokens(r.data) : (r.status == 401 || r.status == 400 ? ABS_ERR_AUTH : ABS_ERR_SERVER);
     http_resp_free(&r);
     if (rc == ABS_OK) str_copy(g_cfg->username, sizeof g_cfg->username, user);
@@ -91,7 +99,8 @@ static int refresh_token_locked(void) {
     snprintf(hdr, sizeof hdr, "x-refresh-token: %s", g_cfg->refresh);
     const char *hdrs[] = {hdr, NULL};
     HttpResp r;
-    if (http_request("POST", url, hdrs, NULL, 0, 1 << 20, &r) != 0) return ABS_ERR_NET;
+    if (http_request("POST", url, hdrs, NULL, 0, 1 << 20, &r) != 0) { note_net(0); return ABS_ERR_NET; }
+    note_net(1);
     int rc;
     if (r.status == 200) rc = store_tokens(r.data);
     else if (r.status == 401 || r.status == 403) {
@@ -114,6 +123,7 @@ static int refresh_token(int seen_gen) {
 static int api(const char *method, const char *path, const char *body, uint32_t max, HttpResp *out) {
     char url[512];
     if (absc_url(path, url, sizeof url) < 0) return ABS_ERR_SERVER;
+    if (offline_now()) return ABS_ERR_NET;
     if (!g_access[0]) {
         int rc = refresh_token(g_gen);
         if (rc != ABS_OK) return rc;
@@ -123,7 +133,8 @@ static int api(const char *method, const char *path, const char *body, uint32_t 
         int gen = g_gen;
         absc_auth_header(auth, sizeof auth);
         const char *hdrs[] = {auth, NULL};
-        if (http_request(method, url, hdrs, body, body ? strlen(body) : 0, max, out) != 0) return ABS_ERR_NET;
+        if (http_request(method, url, hdrs, body, body ? strlen(body) : 0, max, out) != 0) { note_net(0); return ABS_ERR_NET; }
+        note_net(1);
         if (out->status != 401 || attempt == 1) break;
         http_resp_free(out);
         int rc = refresh_token(gen);
