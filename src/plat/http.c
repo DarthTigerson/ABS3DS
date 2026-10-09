@@ -59,7 +59,7 @@ static void learn_clock(httpcContext *c) {
 }
 
 int http_init(void) {
-    return R_SUCCEEDED(httpcInit(0)) ? 0 : -1;
+    return R_SUCCEEDED(httpcInit(0x1000)) ? 0 : -1;
 }
 
 void http_exit(void) {

@@ -51,12 +51,8 @@ void app_save_cfg(void) {
     cfg_save(&g_cfg, CFG_PATH);
 }
 
-static LightLock g_pq_lock;
-void app_save_queue(void) {
-    LightLock_Lock(&g_pq_lock);
-    pq_save(&g_pq, PQ_PATH);
-    LightLock_Unlock(&g_pq_lock);
-}
+/* called by the player with its queue lock held (see player_init) */
+void app_save_queue(void) { pq_save(&g_pq, PQ_PATH); }
 
 /* ---- navigation ------------------------------------------------------------ */
 
@@ -507,7 +503,6 @@ int app_run(void) {
     mkdir(DATA_DIR, 0777);
     cfg_load(&g_cfg, CFG_PATH);
     make_device_id();
-    LightLock_Init(&g_pq_lock);
     LightLock_Init(&g_lib_lock);
     pq_load(&g_pq, PQ_PATH);
 
@@ -591,7 +586,6 @@ int app_run(void) {
     worker_destroy(g_sync);
     http_exit();
     app_save_cfg();
-    app_save_queue();
     sys_exit();
     gfx_exit();
     C2D_Fini();

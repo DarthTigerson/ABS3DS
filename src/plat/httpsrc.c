@@ -39,7 +39,7 @@ static void fetch_thread(void *arg) {
     HttpSrc *s = arg;
     HttpStream *st = NULL;
     uint64_t pos = 0;
-    int backoff = 0;
+    int backoff = 0, stalls = 0;
     char auth[1100];
     const char *hdrs[2];
     while (!s->quit) {
@@ -87,7 +87,13 @@ static void fetch_thread(void *arg) {
         }
         uint32_t n = space < CHUNK ? space : CHUNK;
         int k = http_stream_read(st, s->chunk, n, 4000);
+        if (k == -2 && ++stalls >= 3) {
+            /* ~12 s without a byte: the connection is dead even if it didn't say so */
+            k = -1;
+        }
+        if (k > 0) stalls = 0;
         if (k < 0 && k != -2) {
+            stalls = 0;
             http_stream_close(st);
             st = NULL;
             s->state = HSRC_RECONNECTING;

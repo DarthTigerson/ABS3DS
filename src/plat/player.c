@@ -229,6 +229,7 @@ static void sync_job(void *ud) {
     if (rc == ABS_OK) {
         LightLock_Lock(&P.lock);
         pq_mark_synced(g_pq, j->e.item_id, j->e.updated_ms);
+        if (g_save_queue) g_save_queue();
         LightLock_Unlock(&P.lock);
     }
     free(j);
@@ -246,8 +247,8 @@ static void report(bool close) {
     e.pending = true;
     LightLock_Lock(&P.lock);
     pq_put(g_pq, &e);
-    LightLock_Unlock(&P.lock);
     if (g_save_queue) g_save_queue();
+    LightLock_Unlock(&P.lock);
     SyncJob *j = calloc(1, sizeof *j);
     if (!j) return;
     str_copy(j->session, sizeof j->session, P.session);
@@ -281,7 +282,9 @@ static void flush_job(void *ud) {
             break; /* still offline */
         }
     }
+    LightLock_Lock(&P.lock);
     if (g_save_queue) g_save_queue();
+    LightLock_Unlock(&P.lock);
 }
 
 void player_flush_queue(void) {

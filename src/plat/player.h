@@ -12,6 +12,7 @@
 
 typedef enum { PL_IDLE, PL_OPENING, PL_READY, PL_FAILED } PlayerPhase;
 
+/* save_queue is always called with the player's queue lock held */
 void player_init(Config *cfg, ProgressQueue *pq, void (*save_queue)(void));
 void player_exit(void);  /* syncs and closes the session (blocking, short) */
 
