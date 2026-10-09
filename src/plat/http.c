@@ -105,6 +105,11 @@ static int begin(httpcContext *c, HTTPC_RequestMethod m, const char *url, const 
     httpcSetKeepAlive(c, HTTPC_KEEPALIVE_ENABLED);
     add_headers(c, headers);
     if (range) httpcAddRequestHeaderField(c, "Range", range);
+    /* a POST/PUT without any body never completes in httpc: always send one */
+    if ((m == HTTPC_METHOD_POST || m == HTTPC_METHOD_PUT) && (!body || !body_len)) {
+        body = "{}";
+        body_len = 2;
+    }
     if (body && body_len) {
         httpcAddRequestHeaderField(c, "Content-Type", "application/json");
         /* httpcAddPostDataRaw wants a u32-aligned buffer */
