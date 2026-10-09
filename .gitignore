@@ -8,3 +8,13 @@ build-host/
 romfs/*.bcfnt
 tests/fixtures/media/
 .DS_Store
+
+# local notes and planning docs (not published)
+docs/
+
+# editors / OS
+.vscode/
+.idea/
+*.swp
+.claude/
+Thumbs.db

@@ -16,7 +16,7 @@ place in sync with the ABS web and phone apps.
 
 ## Install
 
-<img src="docs/qr-fbi.png" alt="FBI QR code" width="220" align="right">
+<img src="assets/qr-fbi.png" alt="FBI QR code" width="220" align="right">
 
 1. On the 3DS, open **FBI → Remote Install → Scan QR Code** and scan the code on the right.
    It always downloads the newest `shelf3ds.cia` from the

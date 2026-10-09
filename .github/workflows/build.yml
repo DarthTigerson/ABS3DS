@@ -57,6 +57,6 @@ jobs:
             ## Install
             Scan this QR code in **FBI → Remote Install → Scan QR Code** (it always points at the latest release):
 
-            ![FBI QR code](https://raw.githubusercontent.com/${{ github.repository }}/main/docs/qr-fbi.png)
+            ![FBI QR code](https://raw.githubusercontent.com/${{ github.repository }}/main/assets/qr-fbi.png)
 
             Or copy `shelf3ds.cia` to your SD card and install it with FBI. `shelf3ds.3dsx` runs from the Homebrew Launcher.
