@@ -1,0 +1,10 @@
+build/
+build-host/
+*.3dsx
+*.cia
+*.elf
+*.smdh
+*.map
+romfs/*.bcfnt
+tests/fixtures/media/
+.DS_Store
