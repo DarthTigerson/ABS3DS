@@ -11,6 +11,10 @@ typedef struct {
 } HttpResp;
 
 int http_init(void);
+/* Offset (ms) to add to the console clock to get server/UTC time, learned
+ * from HTTP Date headers. *known=false until the first response. */
+long long http_clock_offset(bool *known);
+void http_set_clock_offset(long long ms);
 void http_exit(void);
 
 /* headers: NULL-terminated array of "Name: value" strings (may be NULL).

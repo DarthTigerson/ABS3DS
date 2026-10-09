@@ -2,6 +2,8 @@
 
 #include <3ds.h>
 
+#include "http.h"
+
 static bool g_lid_closed, g_backlight = true, g_new3ds, g_sleep_allowed = true;
 static int g_battery = 5, g_wifi;
 static bool g_charging, g_wifi_ok;
@@ -84,6 +86,8 @@ void sys_allow_sleep(bool allow) {
 }
 
 unsigned long long sys_now_ms(void) {
-    /* osGetTime counts ms since 1900-01-01 */
-    return (unsigned long long)osGetTime() - 2208988800000ULL;
+    /* osGetTime counts ms since 1900-01-01 in *local* time; the HTTP layer
+     * learns the offset to the server's UTC clock */
+    long long ms = (long long)osGetTime() - 2208988800000LL + http_clock_offset(NULL);
+    return ms > 0 ? (unsigned long long)ms : 0;
 }

@@ -95,12 +95,16 @@ TEST(config_roundtrip_and_clamp) {
     strcpy(c.refresh, "rt.xyz");
     c.speed = 1.5f;
     c.skip_fwd = 60;
+    c.clock_offset_ms = -7200000;
+    c.clock_known = true;
     CHECK_EQ_INT(cfg_save(&c, p), 0);
     CHECK_EQ_INT(cfg_load(&d, p), 0);
     CHECK_STR(d.username, "thomas");
     CHECK_STR(d.refresh, "rt.xyz");
     CHECK_NEAR(d.speed, 1.5, 1e-6);
     CHECK_EQ_INT(d.skip_fwd, 60);
+    CHECK(d.clock_known);
+    CHECK_EQ_INT(d.clock_offset_ms, -7200000);
     FILE *f = fopen(p, "wb"); fputs("{\"speed\":9,\"skipBack\":7,\"syncInterval\":1}", f); fclose(f);
     CHECK_EQ_INT(cfg_load(&d, p), 0);
     CHECK_NEAR(d.speed, 2.0, 1e-6);

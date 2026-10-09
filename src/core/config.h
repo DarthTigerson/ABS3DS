@@ -16,6 +16,8 @@ typedef struct {
     float speed;
     int sync_interval;         /* seconds */
     bool screen_off;           /* backlight off while playing with the lid closed */
+    long long clock_offset_ms; /* console clock -> UTC, learned online */
+    bool clock_known;
 } Config;
 
 void cfg_defaults(Config *c);

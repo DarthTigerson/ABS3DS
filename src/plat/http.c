@@ -12,6 +12,52 @@ struct HttpStream {
     bool done;
 };
 
+static volatile long long g_clock_offset;
+static volatile bool g_clock_known;
+static volatile bool g_clock_fresh; /* learned during this run */
+
+long long http_clock_offset(bool *known) {
+    if (known) *known = g_clock_known;
+    return g_clock_offset;
+}
+
+void http_set_clock_offset(long long ms) {
+    g_clock_offset = ms;
+    g_clock_known = true;
+}
+
+/* "Fri, 09 Oct 2026 17:01:02 GMT" -> unix seconds (0 on failure) */
+static long long parse_http_date(const char *s) {
+    static const char *mon = "JanFebMarAprMayJunJulAugSepOctNovDec";
+    char m[4] = {0};
+    int d, y, hh, mm, ss;
+    const char *comma = strchr(s, ',');
+    if (!comma || sscanf(comma + 1, " %d %3s %d %d:%d:%d", &d, m, &y, &hh, &mm, &ss) != 6) return 0;
+    const char *f = strstr(mon, m);
+    if (!f) return 0;
+    int mo = (int)(f - mon) / 3 + 1;
+    /* days from civil (Howard Hinnant) */
+    y -= mo <= 2;
+    long long era = (y >= 0 ? y : y - 399) / 400;
+    unsigned yoe = (unsigned)(y - era * 400);
+    unsigned doy = (153 * (mo + (mo > 2 ? -3 : 9)) + 2) / 5 + d - 1;
+    unsigned doe = yoe * 365 + yoe / 4 - yoe / 100 + doy;
+    long long days = era * 146097 + (long long)doe - 719468;
+    return days * 86400 + hh * 3600 + mm * 60 + ss;
+}
+
+static void learn_clock(httpcContext *c) {
+    if (g_clock_fresh) return;
+    char date[64] = {0};
+    if (R_FAILED(httpcGetResponseHeader(c, "Date", date, sizeof date)) || !date[0]) return;
+    long long server = parse_http_date(date);
+    if (!server) return;
+    long long local = (long long)osGetTime() - 2208988800000LL;
+    g_clock_offset = server * 1000 - local;
+    g_clock_known = true;
+    g_clock_fresh = true;
+}
+
 int http_init(void) {
     return R_SUCCEEDED(httpcInit(0)) ? 0 : -1;
 }
@@ -103,6 +149,7 @@ int http_request(const char *method, const char *url, const char *const *headers
             if (status == 303) { body = NULL; body_len = 0; method = "GET"; }
             continue;
         }
+        learn_clock(&c);
         uint32_t cap = 16 * 1024, len = 0;
         char *buf = malloc(cap + 1);
         Result r = 0;

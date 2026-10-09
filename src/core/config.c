@@ -70,6 +70,7 @@ int cfg_load(Config *c, const char *path) {
         c->sync_interval = s < 10 ? 10 : s > 60 ? 60 : s;
     }
     if (cJSON_IsBool(v = cJSON_GetObjectItem(o, "screenOff"))) c->screen_off = cJSON_IsTrue(v);
+    if (cJSON_IsNumber(v = cJSON_GetObjectItem(o, "clockOffset"))) { c->clock_offset_ms = (long long)v->valuedouble; c->clock_known = true; }
     cJSON_Delete(o);
     return 0;
 }
@@ -87,6 +88,7 @@ int cfg_save(const Config *c, const char *path) {
     cJSON_AddNumberToObject(o, "speed", c->speed);
     cJSON_AddNumberToObject(o, "syncInterval", c->sync_interval);
     cJSON_AddBoolToObject(o, "screenOff", c->screen_off);
+    if (c->clock_known) cJSON_AddNumberToObject(o, "clockOffset", (double)c->clock_offset_ms);
     char *s = cJSON_Print(o);
     cJSON_Delete(o);
     if (!s) return -1;
