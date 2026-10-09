@@ -338,6 +338,21 @@ int mp4_seek(Mp4 *m, double seconds, double *actual) {
     return 0;
 }
 
+Mp4Cursor mp4_tell(const Mp4 *m) {
+    Mp4Cursor c = {m->s, m->chunk, m->sic, m->spc, m->stsc_i, m->next_run, m->off};
+    return c;
+}
+
+void mp4_restore(Mp4 *m, const Mp4Cursor *c) {
+    m->s = c->s;
+    m->chunk = c->chunk;
+    m->sic = c->sic;
+    m->spc = c->spc;
+    m->stsc_i = c->stsc_i;
+    m->next_run = c->next_run;
+    m->off = c->off;
+}
+
 int mp4_next(Mp4 *m, uint64_t *off, uint32_t *size) {
     if (m->s >= m->nsamples) return 1;
     uint32_t sz = sample_size(m, m->s);

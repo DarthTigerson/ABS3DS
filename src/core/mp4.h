@@ -52,6 +52,9 @@ int mp4_open_at(Mp4 *m, const Reader *tables, uint64_t moov_off, uint64_t moov_s
 /* Positions the cursor on the sample containing t seconds; *actual gets the
  * start time of that sample. 0 on success. */
 int mp4_seek(Mp4 *m, double seconds, double *actual);
+typedef struct { uint32_t s, chunk, sic, spc, stsc_i, next_run; uint64_t off; } Mp4Cursor;
+Mp4Cursor mp4_tell(const Mp4 *m);
+void mp4_restore(Mp4 *m, const Mp4Cursor *c);
 /* Returns the next sample's file offset/size and advances. 0 ok, 1 EOF, <0 error. */
 int mp4_next(Mp4 *m, uint64_t *off, uint32_t *size);
 double mp4_duration(const Mp4 *m);

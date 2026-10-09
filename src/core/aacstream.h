@@ -26,7 +26,8 @@ int aacs_open(AacStream *s, const Reader *media, const Reader *tables);
 int aacs_open_at(AacStream *s, const Reader *media, const Reader *tables, uint64_t moov_off, uint64_t moov_size);
 int aacs_seek(AacStream *s, double t, double *actual);
 /* Decodes one AAC frame into pcm (interleaved). *frames = samples per channel.
- * 0 ok, 1 EOF, <0 fatal error. Corrupt frames are skipped (output silence). */
+ * 0 ok, 1 EOF, -2 I/O error / -3 interrupted (retryable: the frame is not
+ * consumed), other <0 fatal. Corrupt frames are skipped (output silence). */
 int aacs_decode(AacStream *s, int16_t *pcm, int *frames, int *channels, int *rate);
 void aacs_close(AacStream *s);
 

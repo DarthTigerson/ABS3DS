@@ -44,6 +44,7 @@ int aacs_seek(AacStream *s, double t, double *actual) {
 int aacs_decode(AacStream *s, int16_t *pcm, int *frames, int *channels, int *rate) {
     uint64_t off;
     uint32_t size;
+    Mp4Cursor mark = mp4_tell(&s->mp4);
     int rc = mp4_next(&s->mp4, &off, &size);
     if (rc != 0) return rc > 0 ? 1 : -1;
     if (size > s->frame_cap) {
@@ -53,7 +54,11 @@ int aacs_decode(AacStream *s, int16_t *pcm, int *frames, int *channels, int *rat
         s->frame = n;
         s->frame_cap = size;
     }
-    if (reader_read_full(s->media, off, s->frame, size) != 0) return -2; /* I/O: caller may retry */
+    int rr = reader_read_full(s->media, off, s->frame, size);
+    if (rr != 0) {
+        mp4_restore(&s->mp4, &mark); /* the same frame is retried on the next call */
+        return rr == -3 ? -3 : -2;
+    }
     unsigned char *p = s->frame;
     int left = (int)size;
     int err = AACDecode(s->dec, &p, &left, pcm);

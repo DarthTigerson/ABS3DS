@@ -90,6 +90,24 @@ TEST(seek_middle_and_end) {
     free(b.d);
 }
 
+TEST(tell_restore_retries_same_sample) {
+    Buf b = build_synth_mp4(20, 0, 1024);
+    Reader r; MemReaderCtx c; reader_mem(&r, &c, b.d, b.n);
+    static Mp4 m;
+    CHECK_EQ_INT(mp4_open(&m, &r), 0);
+    uint64_t off, o2; uint32_t size, s2;
+    for (int i = 0; i < 5; i++) mp4_next(&m, &off, &size); /* crosses the chunk 2 boundary */
+    Mp4Cursor k = mp4_tell(&m);
+    CHECK_EQ_INT(mp4_next(&m, &off, &size), 0);
+    mp4_restore(&m, &k);
+    CHECK_EQ_INT(mp4_next(&m, &o2, &s2), 0);
+    CHECK_EQ_INT(o2, off);
+    CHECK_EQ_INT(o2, synth_offset(&b, 5));
+    CHECK_EQ_INT(mp4_next(&m, &o2, &s2), 0);
+    CHECK_EQ_INT(o2, synth_offset(&b, 6));
+    free(b.d);
+}
+
 TEST(huge_table_seek_near_end) {
     uint32_t n = 200000;
     Buf b = build_synth_mp4(n, 1, 1024);
@@ -165,6 +183,7 @@ void suite_mp4(void) {
     RUN(sequential_stco);
     RUN(sequential_co64);
     RUN(seek_middle_and_end);
+    RUN(tell_restore_retries_same_sample);
     RUN(huge_table_seek_near_end);
     RUN(open_at_known_moov_with_offset_reader);
     RUN(asc_parse);

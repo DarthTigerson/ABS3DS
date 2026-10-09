@@ -6,7 +6,8 @@ int reader_read_full(const Reader *r, uint64_t off, void *buf, uint32_t n) {
     uint32_t got = 0;
     while (got < n) {
         int k = r->read_at(r->ctx, off + got, (uint8_t *)buf + got, n - got);
-        if (k <= 0) return -1;
+        if (k < 0) return k < -1 ? k : -1; /* pass specific error codes through */
+        if (k == 0) return -1;
         got += (uint32_t)k;
     }
     return 0;

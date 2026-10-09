@@ -12,7 +12,8 @@ typedef struct Reader {
     uint64_t size;
 } Reader;
 
-/* 0 when exactly n bytes were read, -1 otherwise */
+/* 0 when exactly n bytes were read; -1 on short read/error, or the reader's
+ * own negative code (e.g. -3 = interrupted) */
 int reader_read_full(const Reader *r, uint64_t off, void *buf, uint32_t n);
 
 typedef struct { const uint8_t *data; uint64_t size; } MemReaderCtx;
