@@ -1,5 +1,7 @@
 #include "http.h"
 
+#include "dbg.h"
+
 #include <3ds.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -59,7 +61,9 @@ static void learn_clock(httpcContext *c) {
 }
 
 int http_init(void) {
-    return R_SUCCEEDED(httpcInit(0x1000)) ? 0 : -1;
+    Result r = httpcInit(0);
+    if (R_FAILED(r)) dbg("httpcInit failed %08lx", (unsigned long)r);
+    return R_SUCCEEDED(r) ? 0 : -1;
 }
 
 void http_exit(void) {
@@ -87,7 +91,8 @@ static int add_headers(httpcContext *c, const char *const *headers) {
 /* Opens + sends a request; on success the context is open and *status set. */
 static int begin(httpcContext *c, HTTPC_RequestMethod m, const char *url, const char *const *headers,
                  const void *body, uint32_t body_len, const char *range, u32 *status) {
-    if (R_FAILED(httpcOpenContext(c, m, url, 0))) return -1;
+    Result rr = httpcOpenContext(c, m, url, 0);
+    if (R_FAILED(rr)) { dbg("open %s failed %08lx", url, (unsigned long)rr); return -1; }
     httpcSetSSLOpt(c, SSLCOPT_DisableVerify);
     httpcSetKeepAlive(c, HTTPC_KEEPALIVE_ENABLED);
     add_headers(c, headers);
@@ -102,7 +107,8 @@ static int begin(httpcContext *c, HTTPC_RequestMethod m, const char *url, const 
         free(aligned);
         if (R_FAILED(r)) { httpcCloseContext(c); return -1; }
     }
-    if (R_FAILED(httpcBeginRequest(c)) || R_FAILED(httpcGetResponseStatusCodeTimeout(c, status, 15000000000ULL))) {
+    if (R_FAILED(rr = httpcBeginRequest(c)) || R_FAILED(rr = httpcGetResponseStatusCodeTimeout(c, status, 15000000000ULL))) {
+        dbg("request %s failed %08lx", url, (unsigned long)rr);
         httpcCloseContext(c);
         return -1;
     }

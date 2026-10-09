@@ -54,12 +54,24 @@ Tip: type `demo` as the server to try the interface without a server.
 "Screen off" turns both screens off while you listen; press any button to wake them.
 Closing the lid with headphones in keeps playing; without headphones the book pauses.
 
+## Troubleshooting
+
+- **"Can't reach the server"**: check the console is on the same Wi‑Fi and the server is running
+  (open `http://<server>/audiobookshelf/status` in a browser on another device).
+- **"No Audiobookshelf there"**: the address is missing its base path, e.g. `/audiobookshelf`.
+- **"No audio: run DSP1…"**: see Install, step 2.
+- Network problems are logged to `sdmc:/3ds/abs3ds/debug.log` (kept under 256 KB).
+- **Emulators**: Azahar runs the UI and plays downloaded books. Use its *Software* renderer:
+  the default Vulkan renderer on macOS doesn't apply citro2d tints, so icons draw as white or black shapes.
+  Azahar on macOS could not open network connections in testing, so test streaming on a real console.
+
 ## Files on the SD card
 
 ```
 sdmc:/3ds/abs3ds/
   config.json            server, user, settings, refresh token
   progress_queue.json    latest position per book (synced when online)
+  debug.log              network diagnostics
   covers/<id>.jpg        cover cache
   moov/                  cached MP4 indexes for streamed M4B files
   books/<id>/            downloads (meta.json, 01.m4b ..., .done)

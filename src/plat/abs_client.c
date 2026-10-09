@@ -6,6 +6,7 @@
 #include <string.h>
 
 #include "abs_json.h"
+#include "dbg.h"
 #include "http.h"
 #include "strutil.h"
 #include "url.h"
@@ -93,6 +94,7 @@ int absc_login(const char *user, const char *pass) {
 }
 
 static int refresh_token_locked(void) {
+    dbg("refreshing token");
     if (!g_cfg->refresh[0]) return ABS_ERR_AUTH;
     char url[256], hdr[1100];
     if (absc_url("/auth/refresh", url, sizeof url) < 0) return ABS_ERR_SERVER;
@@ -123,7 +125,7 @@ static int refresh_token(int seen_gen) {
 static int api(const char *method, const char *path, const char *body, uint32_t max, HttpResp *out) {
     char url[512];
     if (absc_url(path, url, sizeof url) < 0) return ABS_ERR_SERVER;
-    if (offline_now()) return ABS_ERR_NET;
+    if (offline_now()) { dbg("%s %s: offline, skipped", method, path); return ABS_ERR_NET; }
     if (!g_access[0]) {
         int rc = refresh_token(g_gen);
         if (rc != ABS_OK) return rc;
@@ -141,7 +143,11 @@ static int api(const char *method, const char *path, const char *body, uint32_t 
         if (rc != ABS_OK) return rc;
     }
     if (out->status == 401) { http_resp_free(out); return ABS_ERR_AUTH; }
-    if (out->status < 200 || out->status >= 300) { http_resp_free(out); return ABS_ERR_SERVER; }
+    if (out->status < 200 || out->status >= 300) {
+        dbg("%s %s -> HTTP %d", method, path, out->status);
+        http_resp_free(out);
+        return ABS_ERR_SERVER;
+    }
     return ABS_OK;
 }
 
