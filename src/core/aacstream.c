@@ -19,9 +19,14 @@ static int setup_decoder(AacStream *s) {
 }
 
 int aacs_open(AacStream *s, const Reader *media, const Reader *tables) {
+    return aacs_open_at(s, media, tables, 0, 0);
+}
+
+int aacs_open_at(AacStream *s, const Reader *media, const Reader *tables, uint64_t moov_off, uint64_t moov_size) {
     memset(s, 0, sizeof *s);
     s->media = media;
-    if (mp4_open(&s->mp4, tables) != 0 || s->mp4.codec != MP4_AAC) return -1;
+    int rc = moov_size ? mp4_open_at(&s->mp4, tables, moov_off, moov_size) : mp4_open(&s->mp4, tables);
+    if (rc != 0 || s->mp4.codec != MP4_AAC) return -1;
     s->dec = AACInitDecoder();
     if (!s->dec) return -1;
     s->frame_cap = 8192;

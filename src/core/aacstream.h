@@ -22,6 +22,8 @@ typedef struct {
 
 /* media serves the audio bytes; tables serves the moov (may be the same reader). */
 int aacs_open(AacStream *s, const Reader *media, const Reader *tables);
+/* moov_size == 0 means "search the tables reader for the moov". */
+int aacs_open_at(AacStream *s, const Reader *media, const Reader *tables, uint64_t moov_off, uint64_t moov_size);
 int aacs_seek(AacStream *s, double t, double *actual);
 /* Decodes one AAC frame into pcm (interleaved). *frames = samples per channel.
  * 0 ok, 1 EOF, <0 fatal error. Corrupt frames are skipped (output silence). */

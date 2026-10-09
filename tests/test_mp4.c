@@ -106,6 +106,27 @@ TEST(huge_table_seek_near_end) {
     free(b.d);
 }
 
+TEST(open_at_known_moov_with_offset_reader) {
+    /* simulate a moov cache file: only moov bytes, mapped at their original offsets */
+    Buf b = build_synth_mp4(30, 0, 1024);
+    Reader full; MemReaderCtx fc; reader_mem(&full, &fc, b.d, b.n);
+    uint64_t off, size;
+    CHECK_EQ_INT(mp4_find_moov(&full, &off, &size), 0);
+    const char *p = "build-host/moov_cache.bin";
+    FILE *f = fopen(p, "wb"); fwrite(b.d + off, 1, size, f); fclose(f);
+    Reader r; FileReaderCtx c;
+    CHECK_EQ_INT(reader_file_open(&r, &c, p, off, off + size), 0);
+    static Mp4 m;
+    CHECK_EQ_INT(mp4_open_at(&m, &r, off, size), 0);
+    CHECK_EQ_INT(m.nsamples, 30);
+    uint64_t so; uint32_t ss;
+    CHECK_EQ_INT(mp4_seek(&m, 10 * 1024 / 44100.0, NULL), 0);
+    CHECK_EQ_INT(mp4_next(&m, &so, &ss), 0);
+    CHECK_EQ_INT(so, synth_offset(&b, 10));
+    reader_file_close(&c);
+    free(b.d);
+}
+
 TEST(asc_parse) {
     int aot, rate, ch;
     uint8_t lc[2] = {0x12, 0x10};
@@ -145,6 +166,7 @@ void suite_mp4(void) {
     RUN(sequential_co64);
     RUN(seek_middle_and_end);
     RUN(huge_table_seek_near_end);
+    RUN(open_at_known_moov_with_offset_reader);
     RUN(asc_parse);
     RUN(real_m4b_fixture);
 }

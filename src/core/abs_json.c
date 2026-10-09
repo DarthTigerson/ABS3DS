@@ -263,6 +263,45 @@ void abs_chapters_from_tracks(BookDetail *b) {
     b->nchapters = b->ntracks;
 }
 
+char *abs_detail_to_json(const BookDetail *b) {
+    cJSON *o = cJSON_CreateObject();
+    cJSON_AddStringToObject(o, "id", b->id);
+    cJSON *media = cJSON_AddObjectToObject(o, "media");
+    cJSON *meta = cJSON_AddObjectToObject(media, "metadata");
+    cJSON_AddStringToObject(meta, "title", b->title);
+    cJSON_AddStringToObject(meta, "authorName", b->author);
+    cJSON_AddStringToObject(meta, "narratorName", b->narrator);
+    if (b->description) cJSON_AddStringToObject(meta, "description", b->description);
+    cJSON_AddNumberToObject(media, "duration", b->duration);
+    cJSON *ch = cJSON_AddArrayToObject(media, "chapters");
+    for (int i = 0; i < b->nchapters; i++) {
+        cJSON *c = cJSON_CreateObject();
+        cJSON_AddNumberToObject(c, "start", b->chapters[i].start);
+        cJSON_AddNumberToObject(c, "end", b->chapters[i].end);
+        cJSON_AddStringToObject(c, "title", b->chapters[i].title);
+        cJSON_AddItemToArray(ch, c);
+    }
+    cJSON *tr = cJSON_AddArrayToObject(media, "tracks");
+    for (int i = 0; i < b->ntracks; i++) {
+        const Track *t = &b->tracks[i];
+        cJSON *c = cJSON_CreateObject();
+        cJSON_AddNumberToObject(c, "index", t->index);
+        cJSON_AddStringToObject(c, "ino", t->ino);
+        cJSON_AddNumberToObject(c, "startOffset", t->start_offset);
+        cJSON_AddNumberToObject(c, "duration", t->duration);
+        cJSON_AddStringToObject(c, "title", t->title);
+        cJSON_AddStringToObject(c, "contentUrl", t->content_url);
+        cJSON_AddStringToObject(c, "codec", t->codec);
+        cJSON *m = cJSON_AddObjectToObject(c, "metadata");
+        cJSON_AddStringToObject(m, "ext", t->ext);
+        cJSON_AddNumberToObject(m, "size", (double)t->size);
+        cJSON_AddItemToArray(tr, c);
+    }
+    char *s = cJSON_PrintUnformatted(o);
+    cJSON_Delete(o);
+    return s;
+}
+
 /* ---- bodies ---------------------------------------------------------------- */
 
 static int emit(cJSON *o, char *out, size_t n) {
@@ -313,5 +352,27 @@ int abs_build_progress_body(double current_time, double duration, int finished, 
     cJSON_AddNumberToObject(o, "duration", duration);
     cJSON_AddNumberToObject(o, "progress", duration > 0 ? current_time / duration : 0);
     cJSON_AddBoolToObject(o, "isFinished", finished);
+    return emit(o, out, n);
+}
+
+int abs_build_local_session_body(const char *item_id, const char *device_id, double current_time, double duration,
+                                 double listened, uint64_t updated_ms, char *out, size_t n) {
+    char id[96];
+    snprintf(id, sizeof id, "play_local_%s_%llu", item_id, (unsigned long long)updated_ms);
+    cJSON *o = cJSON_CreateObject();
+    cJSON_AddStringToObject(o, "id", id);
+    cJSON_AddStringToObject(o, "libraryItemId", item_id);
+    cJSON_AddStringToObject(o, "mediaType", "book");
+    cJSON_AddStringToObject(o, "mediaPlayer", "abs3ds");
+    cJSON_AddNumberToObject(o, "playMethod", 3); /* LOCAL */
+    cJSON *dev = cJSON_AddObjectToObject(o, "deviceInfo");
+    cJSON_AddStringToObject(dev, "deviceId", device_id);
+    cJSON_AddStringToObject(dev, "clientName", "ABS3DS");
+    cJSON_AddNumberToObject(o, "currentTime", current_time);
+    cJSON_AddNumberToObject(o, "startTime", current_time);
+    cJSON_AddNumberToObject(o, "duration", duration);
+    cJSON_AddNumberToObject(o, "timeListening", listened);
+    cJSON_AddNumberToObject(o, "startedAt", (double)updated_ms);
+    cJSON_AddNumberToObject(o, "updatedAt", (double)updated_ms);
     return emit(o, out, n);
 }

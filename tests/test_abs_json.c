@@ -137,9 +137,36 @@ TEST(bodies) {
     CHECK(strstr(b, "\"deviceId\":\"dev1\"") != NULL);
     CHECK(strstr(b, "audio/mp4") != NULL);
     CHECK(abs_build_sync_body(1, 1, 1, b, 5) < 0);
+    CHECK(abs_build_local_session_body("li_a", "dev1", 50.5, 100, 12, 1760000000123ULL, b, sizeof b) > 0);
+    CHECK(strstr(b, "\"id\":\"play_local_li_a_1760000000123\"") != NULL);
+    CHECK(strstr(b, "\"libraryItemId\":\"li_a\"") != NULL);
+    CHECK(strstr(b, "\"currentTime\":50.5") != NULL);
+    CHECK(strstr(b, "\"updatedAt\":1760000000123") != NULL);
+}
+
+TEST(detail_roundtrip) {
+    char *j = slurp("tests/fixtures/item_expanded.json");
+    BookDetail d, e;
+    CHECK_EQ_INT(abs_parse_item(j, &d), 0);
+    char *out = abs_detail_to_json(&d);
+    CHECK(out != NULL);
+    CHECK_EQ_INT(abs_parse_item(out, &e), 0);
+    CHECK_STR(e.title, d.title);
+    CHECK_STR(e.author, d.author);
+    CHECK_STR(e.description, d.description);
+    CHECK_EQ_INT(e.nchapters, d.nchapters);
+    CHECK_EQ_INT(e.ntracks, 1);
+    CHECK_STR(e.tracks[0].content_url, d.tracks[0].content_url);
+    CHECK_EQ_INT(e.tracks[0].size, d.tracks[0].size);
+    CHECK_STR(e.tracks[0].ext, ".m4b");
+    book_detail_free(&d);
+    book_detail_free(&e);
+    free(out);
+    free(j);
 }
 
 void suite_abs_json(void) {
+    RUN(detail_roundtrip);
     RUN(login);
     RUN(libraries_picks_book);
     RUN(items_page_with_nulls);

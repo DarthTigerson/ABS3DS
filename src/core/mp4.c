@@ -218,11 +218,18 @@ static int open_trak(Mp4 *m, const Box *trak) {
 }
 
 int mp4_open(Mp4 *m, const Reader *r) {
+    uint64_t off, size;
+    if (mp4_find_moov(r, &off, &size) != 0) return -1;
+    return mp4_open_at(m, r, off, size);
+}
+
+int mp4_open_at(Mp4 *m, const Reader *r, uint64_t moov_off, uint64_t moov_size) {
     memset(m, 0, sizeof *m);
     m->r = r;
+    m->moov_off = moov_off;
+    m->moov_size = moov_size;
     Box moov, b;
-    if (mp4_find_moov(r, &m->moov_off, &m->moov_size) != 0) return -1;
-    if (box_at(r, m->moov_off, r->size, &moov) != 0) return -1;
+    if (box_at(r, m->moov_off, m->moov_off + m->moov_size, &moov) != 0) return -1;
     uint64_t off = moov.body;
     while (off + 8 <= moov.end) {
         if (box_at(r, off, moov.end, &b) != 0) return -1;

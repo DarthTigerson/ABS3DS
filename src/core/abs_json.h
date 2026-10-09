@@ -3,6 +3,7 @@
 #ifndef ABS3DS_ABS_JSON_H
 #define ABS3DS_ABS_JSON_H
 #include <stddef.h>
+#include <stdint.h>
 
 #include "models.h"
 
@@ -20,10 +21,18 @@ int abs_parse_play(const char *json, PlaySession *out);
 /* When a book has no chapters, uses one chapter per track (titled from the file name). */
 void abs_chapters_from_tracks(BookDetail *b);
 
+/* Serialises a book in the /api/items/:id?expanded=1 shape, so abs_parse_item
+ * reads it back (used for downloads/<id>/meta.json). malloc'd, NULL on error. */
+char *abs_detail_to_json(const BookDetail *b);
+
 /* Request bodies. Return the length written (or -1 if it didn't fit). */
 int abs_build_login_body(const char *user, const char *pass, char *out, size_t n);
 int abs_build_play_body(const char *device_id, const char *model, const char *version, char *out, size_t n);
 int abs_build_sync_body(double current_time, double listened, double duration, char *out, size_t n);
 int abs_build_progress_body(double current_time, double duration, int finished, char *out, size_t n);
+/* POST /api/session/local body for progress made offline (httpc has no PATCH).
+ * The server only applies it when updated_ms is newer than its own progress. */
+int abs_build_local_session_body(const char *item_id, const char *device_id, double current_time, double duration,
+                                 double listened, uint64_t updated_ms, char *out, size_t n);
 
 #endif

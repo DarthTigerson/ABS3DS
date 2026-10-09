@@ -47,6 +47,8 @@ int mp4_find_moov(const Reader *r, uint64_t *off, uint64_t *size);
 /* Parses the first audio ('soun') track. The reader only needs to serve the
  * moov range (at its original offsets). 0 on success. */
 int mp4_open(Mp4 *m, const Reader *tables);
+/* Same, when the moov location is already known (cached moov files). */
+int mp4_open_at(Mp4 *m, const Reader *tables, uint64_t moov_off, uint64_t moov_size);
 /* Positions the cursor on the sample containing t seconds; *actual gets the
  * start time of that sample. 0 on success. */
 int mp4_seek(Mp4 *m, double seconds, double *actual);
