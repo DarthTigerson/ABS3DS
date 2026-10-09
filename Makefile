@@ -42,7 +42,7 @@ ROMFS		:=	romfs
 
 APP_TITLE	:=	Shelf3DS
 APP_DESCRIPTION	:=	Audiobookshelf player
-APP_AUTHOR	:=	DarthTigerson
+APP_AUTHOR	:=	 
 ICON		:=	meta/icon.png
 # Release builds pass the git tag: make cia VERSION=1.2.3 (CI does this)
 VERSION		?=	1.0.0
@@ -197,7 +197,7 @@ endif
 #---------------------------------------------------------------------------------
 cia: all
 	@bannertool makebanner -i meta/banner.png -a meta/banner.wav -o $(BUILD)/banner.bnr
-	@bannertool makesmdh -s "$(APP_TITLE)" -l "$(APP_DESCRIPTION)" -p "$(APP_AUTHOR)" -i meta/icon.png -o $(BUILD)/icon.icn
+	@bannertool makesmdh -s "$(APP_TITLE)" -l "$(APP_DESCRIPTION)" -p "$(if $(strip $(APP_AUTHOR)),$(APP_AUTHOR), )" -i meta/icon.png -o $(BUILD)/icon.icn
 	@makerom -f cia -o $(TARGET).cia -elf $(TARGET).elf -rsf meta/app.rsf -icon $(BUILD)/icon.icn \
 		-banner $(BUILD)/banner.bnr -exefslogo -target t \
 		-major $(VERSION_MAJOR) -minor $(VERSION_MINOR) -micro $(VERSION_MICRO) \

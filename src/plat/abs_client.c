@@ -18,6 +18,8 @@ static LightLock g_lock;
 static LightLock g_refresh_lock; /* refresh tokens rotate: only one refresh at a time */
 static volatile int g_gen;       /* bumped whenever a new access token is stored */
 static volatile u64 g_offline_until; /* fail fast after a network error */
+static char g_last_detail[64];
+const char *absc_last_detail(void) { return g_last_detail; }
 
 #define OFFLINE_BACKOFF_MS 20000
 static bool offline_now(void) { return osGetTime() < g_offline_until; }
@@ -59,9 +61,15 @@ int absc_status(const char *server) {
     char url[256];
     if (url_join(server, "/status", url, sizeof url) < 0) return ABS_ERR_SERVER;
     HttpResp r;
-    if (http_request("GET", url, NULL, NULL, 0, 64 * 1024, &r) != 0) { note_net(0); return ABS_ERR_NET; }
+    if (http_request("GET", url, NULL, NULL, 0, 64 * 1024, &r) != 0) {
+        snprintf(g_last_detail, sizeof g_last_detail, "%s", http_last_error());
+        note_net(0);
+        return ABS_ERR_NET;
+    }
     note_net(1);
     int ok = r.status == 200 && r.data && strstr(r.data, "audiobookshelf");
+    if (!ok) snprintf(g_last_detail, sizeof g_last_detail, "HTTP %d", r.status);
+    dbg("status %s -> %d", url, r.status);
     http_resp_free(&r);
     return ok ? ABS_OK : ABS_ERR_SERVER;
 }
@@ -85,8 +93,14 @@ int absc_login(const char *user, const char *pass) {
     if (abs_build_login_body(user, pass, body, sizeof body) < 0) return ABS_ERR_SERVER;
     const char *hdr[] = {"x-return-tokens: true", NULL};
     HttpResp r;
-    if (http_request("POST", url, hdr, body, strlen(body), 1 << 20, &r) != 0) { note_net(0); return ABS_ERR_NET; }
+    if (http_request("POST", url, hdr, body, strlen(body), 1 << 20, &r) != 0) {
+        snprintf(g_last_detail, sizeof g_last_detail, "%s", http_last_error());
+        note_net(0);
+        return ABS_ERR_NET;
+    }
     note_net(1);
+    snprintf(g_last_detail, sizeof g_last_detail, "HTTP %d", r.status);
+    dbg("login -> %d", r.status);
     int rc = r.status == 200 ? store_tokens(r.data) : (r.status == 401 || r.status == 400 ? ABS_ERR_AUTH : ABS_ERR_SERVER);
     http_resp_free(&r);
     if (rc == ABS_OK) str_copy(g_cfg->username, sizeof g_cfg->username, user);

@@ -23,6 +23,9 @@ void http_exit(void);
 int http_request(const char *method, const char *url, const char *const *headers,
                  const void *body, uint32_t body_len, uint32_t max_body, HttpResp *out);
 void http_resp_free(HttpResp *r);
+/* Short description of the last transport failure on this thread's last
+ * request, e.g. "connect d840a03c" (for on-screen diagnostics). */
+const char *http_last_error(void);
 
 /* Streaming GET with an optional Range starting at `from` (and ending at
  * `to` inclusive when to > from). */

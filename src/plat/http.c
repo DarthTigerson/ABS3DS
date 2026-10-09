@@ -14,6 +14,9 @@ struct HttpStream {
     bool done;
 };
 
+static __thread char g_err[64];
+const char *http_last_error(void) { return g_err; }
+
 static volatile long long g_clock_offset;
 static volatile bool g_clock_known;
 static volatile bool g_clock_fresh; /* learned during this run */
@@ -91,8 +94,13 @@ static int add_headers(httpcContext *c, const char *const *headers) {
 /* Opens + sends a request; on success the context is open and *status set. */
 static int begin(httpcContext *c, HTTPC_RequestMethod m, const char *url, const char *const *headers,
                  const void *body, uint32_t body_len, const char *range, u32 *status) {
+    g_err[0] = 0;
     Result rr = httpcOpenContext(c, m, url, 0);
-    if (R_FAILED(rr)) { dbg("open %s failed %08lx", url, (unsigned long)rr); return -1; }
+    if (R_FAILED(rr)) {
+        snprintf(g_err, sizeof g_err, "open %08lx", (unsigned long)rr);
+        dbg("open %s failed %08lx", url, (unsigned long)rr);
+        return -1;
+    }
     httpcSetSSLOpt(c, SSLCOPT_DisableVerify);
     httpcSetKeepAlive(c, HTTPC_KEEPALIVE_ENABLED);
     add_headers(c, headers);
@@ -107,7 +115,9 @@ static int begin(httpcContext *c, HTTPC_RequestMethod m, const char *url, const 
         free(aligned);
         if (R_FAILED(r)) { httpcCloseContext(c); return -1; }
     }
-    if (R_FAILED(rr = httpcBeginRequest(c)) || R_FAILED(rr = httpcGetResponseStatusCodeTimeout(c, status, 15000000000ULL))) {
+    bool began = R_SUCCEEDED(rr = httpcBeginRequest(c));
+    if (!began || R_FAILED(rr = httpcGetResponseStatusCodeTimeout(c, status, 15000000000ULL))) {
+        snprintf(g_err, sizeof g_err, "%s %08lx", began ? "status" : "begin", (unsigned long)rr);
         dbg("request %s failed %08lx", url, (unsigned long)rr);
         httpcCloseContext(c);
         return -1;

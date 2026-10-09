@@ -24,7 +24,8 @@ void absc_init(Config *cfg, void (*save_cfg)(void));
 int absc_status(const char *server);                      /* GET /status */
 int absc_login(const char *user, const char *pass);        /* stores tokens */
 int absc_have_session(void);                               /* refresh token present */
-bool absc_reachable(void);                                 /* false for a while after a network error */
+bool absc_reachable(void);
+const char *absc_last_detail(void);                        /* e.g. "status d820a069" / "HTTP 404" */                                 /* false for a while after a network error */
 void absc_logout(void);
 /* "Authorization: Bearer <token>" (empty string if none) */
 void absc_auth_header(char *out, size_t n);

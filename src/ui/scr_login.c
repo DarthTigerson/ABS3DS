@@ -91,9 +91,12 @@ static void update(const Input *in, float dt) {
         return;
     }
     if (g_result < 0) {
-        str_copy(g_msg, sizeof g_msg, g_result == ABS_ERR_AUTH ? "Wrong username or password" :
-                 g_result == ABS_ERR_NET ? "Can't reach the server. Is it on? Check the address and Wi-Fi." :
-                 "No Audiobookshelf there. Missing a base path like /audiobookshelf?");
+        const char *m = g_result == ABS_ERR_AUTH ? "Wrong username or password" :
+                        g_result == ABS_ERR_NET ? "Can't reach the server" :
+                        "No Audiobookshelf there (base path?)";
+        const char *d = absc_last_detail();
+        if (d[0] && g_result != ABS_ERR_AUTH) snprintf(g_msg, sizeof g_msg, "%s [%s]", m, d);
+        else str_copy(g_msg, sizeof g_msg, m);
         g_result = 0;
     }
     if (in->repeat & (KEY_DOWN | KEY_CPAD_DOWN)) g_focus = g_focus < 3 ? g_focus + 1 : 3;
