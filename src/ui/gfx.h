@@ -41,6 +41,7 @@ void gfx_focus_ring(float x, float y, float w, float h, float r, float t, u32 c)
 void gfx_circle(float cx, float cy, float r, u32 c);
 void gfx_shadow(float x, float y, float w, float h, float spread, float alpha);
 void gfx_icon(IconId icon, float cx, float cy, float size, u32 c);
+/* tint 0 = draw as-is; otherwise alpha/colour tint (tint_blend 0..1) */
 void gfx_image(const C2D_Image *img, float x, float y, float w, float h, u32 tint, float tint_blend);
 void gfx_progress(float x, float y, float w, float h, float frac, u32 fg, u32 bg);
 

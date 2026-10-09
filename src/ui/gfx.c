@@ -199,7 +199,8 @@ void gfx_icon(IconId icon, float cx, float cy, float size, u32 c) {
 void gfx_image(const C2D_Image *img, float x, float y, float w, float h, u32 tint, float blend) {
     if (!img) return;
     C2D_DrawParams p = {{x, y, w, h}, {0, 0}, 0.5f, 0};
-    if (blend > 0 || (tint >> 24) != 255) {
+    /* tint == 0 means "no tint" (not "transparent black") */
+    if (tint != 0 && (blend > 0 || (tint >> 24) != 255)) {
         C2D_ImageTint t;
         C2D_PlainImageTint(&t, tint, blend);
         C2D_DrawImage(*img, &p, &t);
