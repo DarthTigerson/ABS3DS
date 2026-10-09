@@ -10,8 +10,8 @@ static char *slurp(const char *path) {
     long n = ftell(f);
     fseek(f, 0, SEEK_SET);
     char *s = malloc(n + 1);
-    fread(s, 1, n, f);
-    s[n] = 0;
+    size_t got = fread(s, 1, n, f);
+    s[got] = 0;
     fclose(f);
     return s;
 }
@@ -103,6 +103,7 @@ TEST(item_expanded) {
     CHECK_STR(d.tracks[0].ino, "9001");
     CHECK_EQ_INT(d.tracks[0].size, 645000000ULL);
     book_detail_free(&d);
+    free(j);
 }
 TEST(play_session_multi_mp3) {
     char *j = slurp("tests/fixtures/play.json");

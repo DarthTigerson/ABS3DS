@@ -22,7 +22,7 @@ static void b_close(Buf *b) {
     size_t at = b->stack[--b->sp]; uint32_t sz = (uint32_t)(b->n - at);
     b->d[at] = sz >> 24; b->d[at + 1] = sz >> 16; b->d[at + 2] = sz >> 8; b->d[at + 3] = sz;
 }
-static void b_set32(Buf *b, size_t at, uint32_t v) { b->d[at] = v >> 24; b->d[at+1] = v >> 16; b->d[at+2] = v >> 8; b->d[at+3] = v; }
+static __attribute__((unused)) void b_set32(Buf *b, size_t at, uint32_t v) { b->d[at] = v >> 24; b->d[at+1] = v >> 16; b->d[at+2] = v >> 8; b->d[at+3] = v; }
 
 /* sample size pattern used by the synthetic files */
 static uint32_t synth_size(uint32_t i) { return 10 + (i * 7) % 13; }
