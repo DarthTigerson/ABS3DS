@@ -1,6 +1,6 @@
 /* Background job threads (network/API work off the UI thread). */
-#ifndef ABS3DS_WORKER_H
-#define ABS3DS_WORKER_H
+#ifndef SHELF3DS_WORKER_H
+#define SHELF3DS_WORKER_H
 #include <stdbool.h>
 #include <3ds.h>
 

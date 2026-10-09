@@ -1,6 +1,6 @@
 /* Converts linear RGBA8 pixels into the PICA200's tiled layout. */
-#ifndef ABS3DS_TEXSWZ_H
-#define ABS3DS_TEXSWZ_H
+#ifndef SHELF3DS_TEXSWZ_H
+#define SHELF3DS_TEXSWZ_H
 #include <stdint.h>
 
 /* Morton index of (x, y) inside an 8x8 tile */

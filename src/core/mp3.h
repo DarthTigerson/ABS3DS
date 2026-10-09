@@ -1,6 +1,6 @@
 /* MP3 helpers: ID3v2 skipping, frame headers, Xing/Info seek tables. */
-#ifndef ABS3DS_MP3_H
-#define ABS3DS_MP3_H
+#ifndef SHELF3DS_MP3_H
+#define SHELF3DS_MP3_H
 #include <stdbool.h>
 #include <stdint.h>
 

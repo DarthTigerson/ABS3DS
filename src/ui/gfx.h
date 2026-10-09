@@ -1,7 +1,7 @@
 /* Drawing layer on citro2d: palette, fonts, anti-aliased shapes (from
  * generated distance-field textures), soft shadows, icons and text. */
-#ifndef ABS3DS_GFX_H
-#define ABS3DS_GFX_H
+#ifndef SHELF3DS_GFX_H
+#define SHELF3DS_GFX_H
 #include <citro2d.h>
 #include <stdbool.h>
 

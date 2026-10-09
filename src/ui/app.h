@@ -1,6 +1,6 @@
 /* App shell: screens, navigation, input, shared library model. */
-#ifndef ABS3DS_APP_H
-#define ABS3DS_APP_H
+#ifndef SHELF3DS_APP_H
+#define SHELF3DS_APP_H
 #include <3ds.h>
 #include <stdbool.h>
 

@@ -1,9 +1,9 @@
-/* Persistent settings and credentials (sdmc:/3ds/abs3ds/config.json). */
-#ifndef ABS3DS_CONFIG_H
-#define ABS3DS_CONFIG_H
+/* Persistent settings and credentials (sdmc:/3ds/shelf3ds/config.json). */
+#ifndef SHELF3DS_CONFIG_H
+#define SHELF3DS_CONFIG_H
 #include <stdbool.h>
 
-#define CFG_DEFAULT_SERVER "http://192.168.1.10:13378/audiobookshelf"
+#define CFG_DEFAULT_SERVER "http://"
 
 typedef struct {
     char server[160];

@@ -1,6 +1,6 @@
 /* Book time <-> (track, local time) mapping and chapter navigation. */
-#ifndef ABS3DS_TIMELINE_H
-#define ABS3DS_TIMELINE_H
+#ifndef SHELF3DS_TIMELINE_H
+#define SHELF3DS_TIMELINE_H
 #include "models.h"
 
 /* Track index containing book time t (clamped to [0, duration]); *local is

@@ -20,7 +20,7 @@
 #include "timeline.h"
 #include "worker.h"
 
-#define DATA_DIR "sdmc:/3ds/abs3ds"
+#define DATA_DIR "sdmc:/3ds/shelf3ds"
 #define CFG_PATH DATA_DIR "/config.json"
 #define PQ_PATH DATA_DIR "/progress_queue.json"
 
@@ -467,7 +467,7 @@ bool app_keyboard(const char *hint, const char *initial, bool password, char *ou
 static void make_device_id(void) {
     if (g_cfg.device_id[0]) return;
     u64 seed = svcGetSystemTick() ^ osGetTime();
-    snprintf(g_cfg.device_id, sizeof g_cfg.device_id, "abs3ds-%08lx%08lx", (unsigned long)(seed >> 32) ^ 0x5bd1e995,
+    snprintf(g_cfg.device_id, sizeof g_cfg.device_id, "shelf3ds-%08lx%08lx", (unsigned long)(seed >> 32) ^ 0x5bd1e995,
              (unsigned long)seed);
     app_save_cfg();
 }

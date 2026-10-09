@@ -1,0 +1,62 @@
+name: Build
+
+# Every push/PR: run the host tests and build the 3DS packages.
+# Pushing a tag like v1.2.3 also publishes a GitHub release with
+# shelf3ds.cia and shelf3ds.3dsx, versioned from the tag.
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+
+permissions:
+  contents: write
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install ffmpeg (media fixtures)
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
+      - name: Host unit + audio pipeline tests
+        run: make -f Makefile.host test
+
+  build:
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - uses: actions/checkout@v4
+      - name: Version
+        id: ver
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+          else
+            echo "version=0.0.0" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Build toolchain image (devkitARM + makerom + bannertool)
+        run: docker build -t shelf3ds-build docker
+      - name: Build 3dsx + cia
+        run: docker run --rm -v "$PWD":/src -w /src shelf3ds-build make -j"$(nproc)" cia VERSION=${{ steps.ver.outputs.version }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: shelf3ds-${{ steps.ver.outputs.version }}
+          path: |
+            shelf3ds.cia
+            shelf3ds.3dsx
+      - name: Publish release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            shelf3ds.cia
+            shelf3ds.3dsx
+          generate_release_notes: true
+          body: |
+            ## Install
+            Scan this QR code in **FBI → Remote Install → Scan QR Code** (it always points at the latest release):
+
+            ![FBI QR code](https://raw.githubusercontent.com/${{ github.repository }}/main/docs/qr-fbi.png)
+
+            Or copy `shelf3ds.cia` to your SD card and install it with FBI. `shelf3ds.3dsx` runs from the Homebrew Launcher.

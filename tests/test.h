@@ -1,7 +1,7 @@
 /* Minimal host test harness. Each test_*.c defines TEST(name) functions and a
  * suite function registered in tests/main.c. */
-#ifndef ABS3DS_TEST_H
-#define ABS3DS_TEST_H
+#ifndef SHELF3DS_TEST_H
+#define SHELF3DS_TEST_H
 #include <math.h>
 #include <stdio.h>
 #include <string.h>

@@ -1,6 +1,6 @@
 /* Playback policies: when to sync progress, and the sleep timer. */
-#ifndef ABS3DS_POLICY_H
-#define ABS3DS_POLICY_H
+#ifndef SHELF3DS_POLICY_H
+#define SHELF3DS_POLICY_H
 #include <stdbool.h>
 
 typedef struct {

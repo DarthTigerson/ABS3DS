@@ -1,6 +1,6 @@
 /* System integration: lid/headphones, backlights, battery, Wi-Fi, APT hooks. */
-#ifndef ABS3DS_SYS_H
-#define ABS3DS_SYS_H
+#ifndef SHELF3DS_SYS_H
+#define SHELF3DS_SYS_H
 #include <stdbool.h>
 
 void sys_init(void (*on_suspend)(void));

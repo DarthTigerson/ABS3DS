@@ -1,7 +1,7 @@
 /* Random-access byte reader. Implemented over memory, stdio files (SD card)
  * and the HTTP ring buffer (src/plat/httpsrc.c). */
-#ifndef ABS3DS_READER_H
-#define ABS3DS_READER_H
+#ifndef SHELF3DS_READER_H
+#define SHELF3DS_READER_H
 #include <stdint.h>
 #include <stdio.h>
 

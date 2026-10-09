@@ -1,6 +1,6 @@
 /* One playable track: byte source (SD file or HTTP) + demux + decoder. */
-#ifndef ABS3DS_DECODER_H
-#define ABS3DS_DECODER_H
+#ifndef SHELF3DS_DECODER_H
+#define SHELF3DS_DECODER_H
 #include <stdbool.h>
 #include <stdint.h>
 

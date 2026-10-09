@@ -15,7 +15,7 @@
 #include "strutil.h"
 #include "worker.h"
 
-#define BOOKS_DIR "sdmc:/3ds/abs3ds/books"
+#define BOOKS_DIR "sdmc:/3ds/shelf3ds/books"
 #define MAXDL 128
 
 typedef struct {
@@ -111,7 +111,7 @@ static void scan(void) {
 void dl_init(void) {
     LightLock_Init(&g_lock);
     mkdir("sdmc:/3ds", 0777);
-    mkdir("sdmc:/3ds/abs3ds", 0777);
+    mkdir("sdmc:/3ds/shelf3ds", 0777);
     mkdir(BOOKS_DIR, 0777);
     scan();
     g_dl = worker_create(0x31, 1, 32 * 1024);

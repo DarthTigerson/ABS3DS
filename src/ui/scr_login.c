@@ -31,7 +31,7 @@ static void login_job(void *ud) {
 }
 
 static void enter(void) {
-    g_focus = g_cfg.username[0] ? 2 : 1;
+    g_focus = !strcmp(g_cfg.server, "http://") ? 0 : g_cfg.username[0] ? 2 : 1;
     g_msg[0] = 0;
     g_result = 0;
     g_ring_y = 0;
@@ -63,7 +63,7 @@ static void do_connect(void) {
 static void edit(int field) {
     if (field == 0) {
         char buf[160];
-        if (app_keyboard("Server address", g_cfg.server, false, buf, sizeof buf)) {
+        if (app_keyboard("Server, e.g. http://192.168.1.10:13378/audiobookshelf", g_cfg.server, false, buf, sizeof buf)) {
             str_copy(g_cfg.server, sizeof g_cfg.server, buf);
             url_normalize(g_cfg.server, sizeof g_cfg.server);
             app_save_cfg();
@@ -118,7 +118,7 @@ static void draw_top(void) {
     for (int i = 6; i >= 1; i--) gfx_circle(200, 96, 40 + i * 14, col_alpha(acc, 0.025f + 0.012f * pulse));
     gfx_circle(200, 96, 46, acc);
     gfx_icon(IC_BOOK, 200, 104, 46, RGBA(250, 242, 228, 255));
-    gfx_text(F_BOLD, "ABS3DS", 200, 156, 34, COL_TEXT, AL_CENTER);
+    gfx_text(F_BOLD, "Shelf3DS", 200, 156, 34, COL_TEXT, AL_CENTER);
     gfx_text(F_UI, "Audiobookshelf for Nintendo 3DS", 200, 194, 15, COL_DIM, AL_CENTER);
 }
 
@@ -136,7 +136,8 @@ static void field(int i, IconId ic, const char *label, const char *value, bool s
         shown[n] = 0;
         value = shown;
     }
-    if (!value[0]) gfx_text(F_UI, "Tap to enter", 52, y + 19, 14, col_alpha(COL_DIM, 0.6f), AL_LEFT);
+    if (i == 0 && !strcmp(value, "http://")) value = "";
+    if (!value[0]) gfx_text_fit(F_UI, i == 0 ? "e.g. http://192.168.1.10:13378/audiobookshelf" : "Tap to enter", 52, y + 19, i == 0 ? 12 : 14, 244, col_alpha(COL_DIM, 0.6f), AL_LEFT);
     else gfx_text_fit(F_SYS, value, 52, y + 19, 15, 240, COL_TEXT, AL_LEFT);
 }
 

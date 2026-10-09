@@ -1,6 +1,6 @@
 /* Sorting and searching the in-memory library list. */
-#ifndef ABS3DS_LIBRARY_H
-#define ABS3DS_LIBRARY_H
+#ifndef SHELF3DS_LIBRARY_H
+#define SHELF3DS_LIBRARY_H
 #include "models.h"
 
 typedef enum { SORT_TITLE, SORT_AUTHOR, SORT_RECENT, SORT_COUNT } SortMode;

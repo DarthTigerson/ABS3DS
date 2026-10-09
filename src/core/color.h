@@ -1,5 +1,5 @@
-#ifndef ABS3DS_COLOR_H
-#define ABS3DS_COLOR_H
+#ifndef SHELF3DS_COLOR_H
+#define SHELF3DS_COLOR_H
 #include <stdint.h>
 
 typedef struct { uint8_t r, g, b; } Rgb;

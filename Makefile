@@ -31,7 +31,7 @@ include $(DEVKITARM)/3ds_rules
 #     - icon.png
 #     - <libctru folder>/default_icon.png
 #---------------------------------------------------------------------------------
-TARGET		:=	abs3ds
+TARGET		:=	shelf3ds
 BUILD		:=	build
 SOURCES		:=	src src/core src/plat src/ui vendor/cjson vendor/sonic vendor/helix-aac
 DATA		:=	data
@@ -40,13 +40,16 @@ GRAPHICS	:=	gfx
 GFXBUILD	:=	$(BUILD)
 ROMFS		:=	romfs
 
-APP_TITLE	:=	ABS3DS
+APP_TITLE	:=	Shelf3DS
 APP_DESCRIPTION	:=	Audiobookshelf player
 APP_AUTHOR	:=	DarthTigerson
 ICON		:=	meta/icon.png
-VERSION_MAJOR	:=	1
-VERSION_MINOR	:=	0
-VERSION_MICRO	:=	0
+# Release builds pass the git tag: make cia VERSION=1.2.3 (CI does this)
+VERSION		?=	1.0.0
+VERSION_PARTS	:=	$(subst ., ,$(patsubst v%,%,$(VERSION)))
+VERSION_MAJOR	:=	$(or $(word 1,$(VERSION_PARTS)),0)
+VERSION_MINOR	:=	$(or $(word 2,$(VERSION_PARTS)),0)
+VERSION_MICRO	:=	$(or $(word 3,$(VERSION_PARTS)),0)
 
 #---------------------------------------------------------------------------------
 # options for code generation
@@ -58,7 +61,7 @@ CFLAGS	:=	-g -Wall -Wno-format-truncation -O2 -mword-relocations \
 			$(ARCH)
 
 CFLAGS	+=	$(INCLUDE) -D__3DS__ -std=gnu11 \
-		-DABS3DS_VERSION=\"$(VERSION_MAJOR).$(VERSION_MINOR).$(VERSION_MICRO)\" 
+		-DAPP_VERSION=\"$(VERSION_MAJOR).$(VERSION_MINOR).$(VERSION_MICRO)\" 
 
 CXXFLAGS	:= $(CFLAGS) -fno-rtti -fno-exceptions -std=gnu++11
 
@@ -198,7 +201,7 @@ cia: all
 	@makerom -f cia -o $(TARGET).cia -elf $(TARGET).elf -rsf meta/app.rsf -icon $(BUILD)/icon.icn \
 		-banner $(BUILD)/banner.bnr -exefslogo -target t \
 		-major $(VERSION_MAJOR) -minor $(VERSION_MINOR) -micro $(VERSION_MICRO) \
-		-DAPP_TITLE="$(APP_TITLE)" -DAPP_PRODUCT_CODE="CTR-H-ABS3" -DAPP_UNIQUE_ID="0xAB53D" \
+		-DAPP_TITLE="$(APP_TITLE)" -DAPP_PRODUCT_CODE="CTR-H-SHLF" -DAPP_UNIQUE_ID="0x5E1F3" \
 		-DAPP_ROMFS="$(ROMFS)" -DAPP_CATEGORY="Application" -DAPP_USE_ON_SD="true" -DAPP_ENCRYPTED="false" \
 		-DAPP_MEMORY_TYPE="Application" -DAPP_SYSTEM_MODE="64MB" -DAPP_SYSTEM_MODE_EXT="124MB" \
 		-DAPP_CPU_SPEED="804MHz" -DAPP_ENABLE_L2_CACHE="true" -DAPP_VERSION_MAJOR="$(VERSION_MAJOR)"

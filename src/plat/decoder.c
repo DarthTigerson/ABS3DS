@@ -14,7 +14,7 @@
 #include "mp4.h"
 #include "reader.h"
 
-#define MOOV_DIR "sdmc:/3ds/abs3ds/moov"
+#define MOOV_DIR "sdmc:/3ds/shelf3ds/moov"
 #define MOOV_MAX (48u << 20)
 
 enum { K_AAC, K_MP3, K_MP4MP3 };
@@ -74,7 +74,7 @@ static int open_remote_tables(Stream *s, const TrackSource *src, void (*auth)(ch
         uint64_t o, z;
         if (mp4_find_moov(&rr, &o, &z) != 0 || z > MOOV_MAX) return STREAM_UNSUPPORTED;
         mkdir("sdmc:/3ds", 0777);
-        mkdir("sdmc:/3ds/abs3ds", 0777);
+        mkdir("sdmc:/3ds/shelf3ds", 0777);
         mkdir(MOOV_DIR, 0777);
         if (http_fetch_range_to_file(src->url, auth, o, z, path) != 0) return STREAM_IO;
         moov_off = o;

@@ -1,8 +1,8 @@
 /* Playback domain logic: opening books (stream or download), resume
  * position, chapters/skip, speed, sleep timer, progress sync and the
  * offline progress queue. Called from the UI thread. */
-#ifndef ABS3DS_PLAYER_H
-#define ABS3DS_PLAYER_H
+#ifndef SHELF3DS_PLAYER_H
+#define SHELF3DS_PLAYER_H
 #include <stdbool.h>
 
 #include "config.h"

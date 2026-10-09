@@ -233,7 +233,7 @@ int absc_fetch_item(const char *id, BookDetail *out) {
 int absc_play(const char *id, const char *model, PlaySession *out) {
     char path[128], body[1024];
     snprintf(path, sizeof path, "/api/items/%s/play", id);
-    abs_build_play_body(g_cfg->device_id, model, ABS3DS_VERSION, body, sizeof body);
+    abs_build_play_body(g_cfg->device_id, model, APP_VERSION, body, sizeof body);
     HttpResp r;
     int rc = api("POST", path, body, 4 << 20, &r);
     if (rc) return rc;

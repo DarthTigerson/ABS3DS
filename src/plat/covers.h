@@ -2,8 +2,8 @@
  * background thread, uploaded to GPU textures on the main thread.
  * Thumbnails live in an LRU; one "hero" cover (+ blurred backdrop) is kept
  * for the focused/playing book. */
-#ifndef ABS3DS_COVERS_H
-#define ABS3DS_COVERS_H
+#ifndef SHELF3DS_COVERS_H
+#define SHELF3DS_COVERS_H
 #include <citro2d.h>
 #include <stdbool.h>
 

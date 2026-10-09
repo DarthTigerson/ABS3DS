@@ -1,7 +1,7 @@
 /* Audiobookshelf API client. Owns the access token; every call refreshes it
  * once on 401 (rotating the stored refresh token). Thread-safe. */
-#ifndef ABS3DS_ABS_CLIENT_H
-#define ABS3DS_ABS_CLIENT_H
+#ifndef SHELF3DS_ABS_CLIENT_H
+#define SHELF3DS_ABS_CLIENT_H
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>

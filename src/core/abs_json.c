@@ -326,13 +326,13 @@ int abs_build_play_body(const char *device_id, const char *model, const char *ve
     cJSON *o = cJSON_CreateObject();
     cJSON *dev = cJSON_AddObjectToObject(o, "deviceInfo");
     cJSON_AddStringToObject(dev, "deviceId", device_id);
-    cJSON_AddStringToObject(dev, "clientName", "ABS3DS");
+    cJSON_AddStringToObject(dev, "clientName", "Shelf3DS");
     cJSON_AddStringToObject(dev, "clientVersion", version);
     cJSON_AddStringToObject(dev, "manufacturer", "Nintendo");
     cJSON_AddStringToObject(dev, "model", model);
     cJSON_AddBoolToObject(o, "forceDirectPlay", 1);
     cJSON_AddBoolToObject(o, "forceTranscode", 0);
-    cJSON_AddStringToObject(o, "mediaPlayer", "abs3ds");
+    cJSON_AddStringToObject(o, "mediaPlayer", "shelf3ds");
     const char *mimes[] = {"audio/mpeg", "audio/mp4", "audio/x-m4b", "audio/aac", "audio/x-m4a"};
     cJSON_AddItemToObject(o, "supportedMimeTypes", cJSON_CreateStringArray(mimes, 5));
     return emit(o, out, n);
@@ -363,11 +363,11 @@ int abs_build_local_session_body(const char *item_id, const char *device_id, dou
     cJSON_AddStringToObject(o, "id", id);
     cJSON_AddStringToObject(o, "libraryItemId", item_id);
     cJSON_AddStringToObject(o, "mediaType", "book");
-    cJSON_AddStringToObject(o, "mediaPlayer", "abs3ds");
+    cJSON_AddStringToObject(o, "mediaPlayer", "shelf3ds");
     cJSON_AddNumberToObject(o, "playMethod", 3); /* LOCAL */
     cJSON *dev = cJSON_AddObjectToObject(o, "deviceInfo");
     cJSON_AddStringToObject(dev, "deviceId", device_id);
-    cJSON_AddStringToObject(dev, "clientName", "ABS3DS");
+    cJSON_AddStringToObject(dev, "clientName", "Shelf3DS");
     cJSON_AddNumberToObject(o, "currentTime", current_time);
     cJSON_AddNumberToObject(o, "startTime", current_time);
     cJSON_AddNumberToObject(o, "duration", duration);

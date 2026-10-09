@@ -109,7 +109,7 @@ static void setting_label(int i, char *name, char *val, int n) {
     default: {
         strcpy(name, "About");
         double gb = dl_total_bytes() / 1e9;
-        snprintf(val, n, "v" ABS3DS_VERSION " \xC2\xB7 %.1f GB \xC2\xB7 CPU %d%%", gb, (int)(engine_cpu_load() * 100));
+        snprintf(val, n, "v" APP_VERSION " \xC2\xB7 %.1f GB \xC2\xB7 CPU %d%%", gb, (int)(engine_cpu_load() * 100));
     }
     }
 }

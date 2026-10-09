@@ -1,5 +1,5 @@
-#ifndef ABS3DS_STRUTIL_H
-#define ABS3DS_STRUTIL_H
+#ifndef SHELF3DS_STRUTIL_H
+#define SHELF3DS_STRUTIL_H
 #include <stddef.h>
 
 /* Copies src into dst (size n), truncating on a UTF-8 character boundary.

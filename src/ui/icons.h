@@ -1,6 +1,6 @@
 /* Icon ids + rasteriser (no citro2d dependency, so it builds on the host). */
-#ifndef ABS3DS_ICONS_H
-#define ABS3DS_ICONS_H
+#ifndef SHELF3DS_ICONS_H
+#define SHELF3DS_ICONS_H
 #include <stdint.h>
 
 typedef enum {

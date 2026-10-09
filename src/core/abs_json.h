@@ -1,7 +1,7 @@
 /* Audiobookshelf (v2.31) JSON <-> plain C structs. All parsers tolerate
  * missing or null fields and return 0 on success, -1 on malformed JSON. */
-#ifndef ABS3DS_ABS_JSON_H
-#define ABS3DS_ABS_JSON_H
+#ifndef SHELF3DS_ABS_JSON_H
+#define SHELF3DS_ABS_JSON_H
 #include <stddef.h>
 #include <stdint.h>
 

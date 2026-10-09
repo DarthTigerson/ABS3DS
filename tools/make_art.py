@@ -39,7 +39,7 @@ def diag_gradient(w, h, a, b):
 
 
 def draw_mark(size):
-    """The ABS3DS mark: an open book whose pages turn into sound waves, on a warm disc."""
+    """The Shelf3DS mark: an open book whose pages turn into sound waves, on a warm disc."""
     s = size
     img = Image.new("RGBA", (s, s), (0, 0, 0, 0))
     disc = diag_gradient(s, s, AMBER, CORAL).convert("RGBA")
@@ -89,10 +89,10 @@ def make_banner():
     mark = draw_mark(int(H * 0.62))
     bg.alpha_composite(mark, (int(W * 0.08), int(H * 0.19)))
     d = ImageDraw.Draw(bg)
-    big = ImageFont.truetype("assets/fonts/Manrope-700.ttf", int(H * 0.27))
+    big = ImageFont.truetype("assets/fonts/Manrope-700.ttf", int(H * 0.22))
     small = ImageFont.truetype("assets/fonts/Manrope-500.ttf", int(H * 0.10))
     tx = int(W * 0.44)
-    d.text((tx, int(H * 0.22)), "ABS3DS", font=big, fill=CREAM)
+    d.text((tx, int(H * 0.25)), "Shelf3DS", font=big, fill=CREAM)
     d.text((tx + 4, int(H * 0.56)), "Audiobookshelf player", font=small, fill=(190, 190, 200))
     d.rounded_rectangle((tx + 4, int(H * 0.74), tx + 4 + int(W * 0.18), int(H * 0.755)), radius=4, fill=AMBER)
     bg.resize((256, 128), Image.LANCZOS).save("meta/banner.png")

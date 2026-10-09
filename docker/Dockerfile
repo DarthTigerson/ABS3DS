@@ -1,4 +1,4 @@
-# ABS3DS build image: devkitARM + libctru/citro2d + makerom + bannertool
+# Shelf3DS build image: devkitARM + libctru/citro2d + makerom + bannertool
 FROM devkitpro/devkitarm:latest
 
 RUN apt-get update && apt-get install -y --no-install-recommends build-essential git ca-certificates zip \

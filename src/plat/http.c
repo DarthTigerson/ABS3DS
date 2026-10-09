@@ -7,7 +7,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define UA "ABS3DS/" ABS3DS_VERSION " (Nintendo 3DS)"
+#define UA "Shelf3DS/" APP_VERSION " (Nintendo 3DS)"
 
 struct HttpStream {
     httpcContext ctx;

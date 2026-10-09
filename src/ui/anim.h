@@ -1,6 +1,6 @@
 /* Small animation helpers. */
-#ifndef ABS3DS_ANIM_H
-#define ABS3DS_ANIM_H
+#ifndef SHELF3DS_ANIM_H
+#define SHELF3DS_ANIM_H
 #include <math.h>
 
 /* Frame-rate independent exponential approach: rate ~ 1/seconds to settle. */

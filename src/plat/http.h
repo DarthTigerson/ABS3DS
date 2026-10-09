@@ -1,6 +1,6 @@
 /* Plain-HTTP client over libctru httpc. */
-#ifndef ABS3DS_HTTP_H
-#define ABS3DS_HTTP_H
+#ifndef SHELF3DS_HTTP_H
+#define SHELF3DS_HTTP_H
 #include <stdbool.h>
 #include <stdint.h>
 

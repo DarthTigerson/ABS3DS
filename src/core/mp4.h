@@ -1,8 +1,8 @@
 /* Minimal ISO-BMFF (MP4/M4A/M4B) audio demuxer. Sample tables are read on
  * demand through small cached cursors, so 25 h books with millions of
  * samples need only a few KB of RAM. */
-#ifndef ABS3DS_MP4_H
-#define ABS3DS_MP4_H
+#ifndef SHELF3DS_MP4_H
+#define SHELF3DS_MP4_H
 #include <stdbool.h>
 #include <stdint.h>
 

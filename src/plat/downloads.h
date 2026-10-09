@@ -1,9 +1,9 @@
-/* Offline downloads to sdmc:/3ds/abs3ds/books/<itemId>/ :
+/* Offline downloads to sdmc:/3ds/shelf3ds/books/<itemId>/ :
  *   meta.json   book detail (abs_parse_item format)
  *   NN<ext>     track files (".part" while incomplete)
  *   .done       marker written when every track is complete */
-#ifndef ABS3DS_DOWNLOADS_H
-#define ABS3DS_DOWNLOADS_H
+#ifndef SHELF3DS_DOWNLOADS_H
+#define SHELF3DS_DOWNLOADS_H
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>

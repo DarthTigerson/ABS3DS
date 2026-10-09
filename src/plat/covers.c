@@ -19,7 +19,7 @@
 #include "texswz.h"
 #include "worker.h"
 
-#define COVER_DIR "sdmc:/3ds/abs3ds/covers"
+#define COVER_DIR "sdmc:/3ds/shelf3ds/covers"
 #define NTHUMB 48
 #define NACCENT 160
 #define THUMB 128
@@ -179,7 +179,7 @@ void covers_init(void) {
     LightLock_Init(&g_lock);
     LightEvent_Init(&g_ev, RESET_ONESHOT);
     mkdir("sdmc:/3ds", 0777);
-    mkdir("sdmc:/3ds/abs3ds", 0777);
+    mkdir("sdmc:/3ds/shelf3ds", 0777);
     mkdir(COVER_DIR, 0777);
     g_th = thread_spawn(cover_thread, NULL, 64 * 1024, 0x30, 1);
 }

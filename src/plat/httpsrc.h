@@ -1,8 +1,8 @@
 /* Streaming HTTP byte source: a ring buffer filled by a background thread
  * with Range requests. Reads near the fill point wait; far reads restart the
  * request at the new offset. Survives Wi-Fi drops with retry/backoff. */
-#ifndef ABS3DS_HTTPSRC_H
-#define ABS3DS_HTTPSRC_H
+#ifndef SHELF3DS_HTTPSRC_H
+#define SHELF3DS_HTTPSRC_H
 #include <stdint.h>
 
 #include "reader.h"

@@ -1,7 +1,7 @@
 /* AAC-in-MP4 track decoder: MP4 demux + Helix AAC (LC and HE-AAC/SBR).
  * Pure C, shared by the host tests and the 3DS audio engine. */
-#ifndef ABS3DS_AACSTREAM_H
-#define ABS3DS_AACSTREAM_H
+#ifndef SHELF3DS_AACSTREAM_H
+#define SHELF3DS_AACSTREAM_H
 #include <stdint.h>
 
 #include "mp4.h"

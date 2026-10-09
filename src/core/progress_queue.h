@@ -1,7 +1,7 @@
 /* Offline progress queue: the latest position per book, saved to SD and
  * flushed to the server (PATCH /api/me/progress) when back online. */
-#ifndef ABS3DS_PROGRESS_QUEUE_H
-#define ABS3DS_PROGRESS_QUEUE_H
+#ifndef SHELF3DS_PROGRESS_QUEUE_H
+#define SHELF3DS_PROGRESS_QUEUE_H
 #include <stdbool.h>
 #include <stdint.h>
 

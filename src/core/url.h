@@ -1,5 +1,5 @@
-#ifndef ABS3DS_URL_H
-#define ABS3DS_URL_H
+#ifndef SHELF3DS_URL_H
+#define SHELF3DS_URL_H
 #include <stddef.h>
 
 /* "http://h:p/base" + "/api/x" -> "http://h:p/base/api/x" (no doubled slash). */

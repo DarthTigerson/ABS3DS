@@ -1,6 +1,6 @@
 /* Plain data types shared by the core, platform and UI layers. */
-#ifndef ABS3DS_MODELS_H
-#define ABS3DS_MODELS_H
+#ifndef SHELF3DS_MODELS_H
+#define SHELF3DS_MODELS_H
 #include <stdbool.h>
 #include <stdint.h>
 

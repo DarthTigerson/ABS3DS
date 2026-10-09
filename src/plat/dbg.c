@@ -4,7 +4,7 @@
 #include <stdarg.h>
 #include <stdio.h>
 
-#define LOG "sdmc:/3ds/abs3ds/debug.log"
+#define LOG "sdmc:/3ds/shelf3ds/debug.log"
 static LightLock g_lock;
 static int g_init;
 

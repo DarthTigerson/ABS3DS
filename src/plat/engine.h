@@ -1,8 +1,8 @@
 /* Audio engine: a high-priority thread that decodes the current book,
  * time-stretches it (sonic) and feeds NDSP. The UI talks to it through
  * commands and reads back state/position. */
-#ifndef ABS3DS_ENGINE_H
-#define ABS3DS_ENGINE_H
+#ifndef SHELF3DS_ENGINE_H
+#define SHELF3DS_ENGINE_H
 #include <stdbool.h>
 
 #include "decoder.h"
