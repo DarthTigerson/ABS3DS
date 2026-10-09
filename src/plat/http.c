@@ -95,7 +95,7 @@ static int add_headers(httpcContext *c, const char *const *headers) {
 static int begin(httpcContext *c, HTTPC_RequestMethod m, const char *url, const char *const *headers,
                  const void *body, uint32_t body_len, const char *range, u32 *status) {
     g_err[0] = 0;
-    Result rr = httpcOpenContext(c, m, url, 0);
+    Result rr = httpcOpenContext(c, m, url, 1); /* like FBI: apply the console's default network settings */
     if (R_FAILED(rr)) {
         snprintf(g_err, sizeof g_err, "open %08lx", (unsigned long)rr);
         dbg("open %s failed %08lx", url, (unsigned long)rr);
