@@ -15,6 +15,7 @@ typedef struct {
     char content_url[160]; /* "/api/items/<id>/file/<ino>" */
     char codec[16];        /* "aac", "mp3", ... */
     char ext[8];           /* ".m4b", ".mp3", ... */
+    char title[96];        /* usually the file name */
     double start_offset;   /* book time at which this track starts */
     double duration;
     uint64_t size;
