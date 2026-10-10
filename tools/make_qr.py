@@ -4,7 +4,7 @@ download the latest shelf3ds.cia release. Run: /usr/bin/python3 tools/make_qr.py
 import qrcode
 from PIL import Image, ImageDraw, ImageFont
 
-URL = "https://github.com/DarthTigerson/Shelf3DS/releases/latest/download/shelf3ds.cia"
+URL = "https://github.com/DarthTigerson/ABS3DS/releases/latest/download/shelf3ds.cia"
 
 qr = qrcode.QRCode(error_correction=qrcode.constants.ERROR_CORRECT_M, box_size=8, border=3)
 qr.add_data(URL)

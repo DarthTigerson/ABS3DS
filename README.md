@@ -1,7 +1,7 @@
 # Shelf3DS: Audiobookshelf for Nintendo 3DS
 
-[![Build](https://github.com/DarthTigerson/Shelf3DS/actions/workflows/build.yml/badge.svg)](https://github.com/DarthTigerson/Shelf3DS/actions/workflows/build.yml)
-[![Latest release](https://img.shields.io/github/v/release/DarthTigerson/Shelf3DS)](https://github.com/DarthTigerson/Shelf3DS/releases/latest)
+[![Build](https://github.com/DarthTigerson/ABS3DS/actions/workflows/build.yml/badge.svg)](https://github.com/DarthTigerson/ABS3DS/actions/workflows/build.yml)
+[![Latest release](https://img.shields.io/github/v/release/DarthTigerson/ABS3DS)](https://github.com/DarthTigerson/ABS3DS/releases/latest)
 
 A native 3DS player for your self-hosted [Audiobookshelf](https://www.audiobookshelf.org/) server.
 Browse your library with cover art, stream or download books, and keep your
@@ -20,7 +20,7 @@ place in sync with the ABS web and phone apps.
 
 1. On the 3DS, open **FBI → Remote Install → Scan QR Code** and scan the code on the right.
    It always downloads the newest `shelf3ds.cia` from the
-   [latest release](https://github.com/DarthTigerson/Shelf3DS/releases/latest).
+   [latest release](https://github.com/DarthTigerson/ABS3DS/releases/latest).
    You can also download `shelf3ds.cia` yourself, copy it to the SD card and install it with FBI.
    `shelf3ds.3dsx` runs from the Homebrew Launcher.
 2. **Audio needs the DSP firmware dump** (`sdmc:/3ds/dspfirm.cdc`). Most consoles set up with
