@@ -60,6 +60,19 @@ static struct {
 
 static void set_state(EngineState s) { E.state = s; }
 
+/* Opening a track can fail on the network (the 3DS's HTTP service times out under
+ * load): retry a few times with backoff before giving up. */
+static struct { int tries; u64 at; double t; } g_retry;
+
+static void fail(int rc) {
+    E.error = rc;
+    set_state(ENG_ERROR);
+    if (rc == STREAM_IO) {
+        if (g_retry.tries == 0) g_retry.t = E.pos;
+        g_retry.at = osGetTime() + 3000ULL * (g_retry.tries + 1);
+    }
+}
+
 static void close_stream(void) {
     LightLock_Lock(&E.lock);
     Stream *s = E.st;
@@ -202,7 +215,7 @@ static int fill(int i) {
         }
         int cur_before = E.cur;
         int rc = pull_decoded();
-        if (rc < 0) { dbg("engine: decode error %d", rc); E.error = rc; set_state(ENG_ERROR); break; }
+        if (rc < 0) { dbg("engine: decode error %d", rc); fail(rc); break; }
         if (rc == 0) {
             if (E.cur != cur_before && frames == 0) {
                 t0 = E.anchor_t; /* fresh track, fresh anchor */
@@ -256,7 +269,8 @@ static void do_load(PlayableBook *b, double t, bool autoplay) {
     double local;
     int i = tl_locate(E.book.tracks, E.book.ntracks, t, &local);
     int rc = i < 0 ? STREAM_ERR : open_track(i, local);
-    if (rc) { E.error = rc; set_state(ENG_ERROR); return; }
+    g_retry.tries = 0;
+    if (rc) { fail(rc); return; }
     E.rate = 0; /* force channel configuration from the first decoded frame */
     E.ch = 0;
     set_state(autoplay ? ENG_BUFFERING : ENG_PAUSED);
@@ -279,7 +293,7 @@ static void do_seek(double t) {
     } else {
         rc = open_track(i, local);
     }
-    if (rc) { E.error = rc; set_state(ENG_ERROR); return; }
+    if (rc) { fail(rc); return; }
     E.pos = E.anchor_t;
     E.last_end_t = E.anchor_t;
     E.son_speed = 1.0f;
@@ -322,6 +336,21 @@ static void engine_thread(void *arg) {
             continue;
         }
         process_commands();
+        if (E.state == ENG_ERROR && E.error == STREAM_IO && E.want_play && g_retry.tries < 5 && osGetTime() >= g_retry.at) {
+            g_retry.tries++;
+            dbg("engine: retrying the network (%d of 5)", g_retry.tries);
+            double local;
+            int i = tl_locate(E.book.tracks, E.book.ntracks, g_retry.t, &local);
+            int rc = i < 0 ? STREAM_ERR : open_track(i, local);
+            if (rc) fail(rc);
+            else {
+                E.error = 0;
+                E.rate = E.ch = 0;
+                reset_output();
+                E.pos = E.anchor_t;
+                set_state(ENG_BUFFERING);
+            }
+        }
         EngineState s = E.state;
         if (s == ENG_PLAYING || s == ENG_BUFFERING || s == ENG_PAUSED) {
             u64 t0 = svcGetSystemTick();
@@ -333,8 +362,7 @@ static void engine_thread(void *arg) {
                     configure_channel(E.dec_rate, E.dec_ch);
                 } else if (pr < 0) {
                     dbg("engine: first decode error %d", pr);
-                    E.error = pr;
-                    set_state(ENG_ERROR);
+                    fail(pr);
                 }
             }
             if (E.rate) {

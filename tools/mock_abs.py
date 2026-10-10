@@ -397,6 +397,7 @@ def main():
     ap.add_argument("--media", default=os.path.join(os.path.dirname(__file__), "..", "tests", "media"))
     ap.add_argument("--books", type=int, default=60, help="filler books")
     ap.add_argument("--showcase", help="books.json from tools/fetch_showcase.py (README screenshots)")
+    ap.add_argument("--add", action="append", default=[], help="serve this local audio file as an extra book (testing)")
     a = ap.parse_args()
     Handler.media = os.path.abspath(a.media)
     if a.showcase:
@@ -407,6 +408,16 @@ def main():
                 state["progress"][Handler.books[k]["id"]] = (Handler.books[k]["duration"] * frac, now - k * 60000)
     else:
         Handler.books = make_books(Handler.media, a.books)
+    for k, path in enumerate(a.add):
+        path = os.path.abspath(path)
+        ext = os.path.splitext(path)[1]
+        codec = "mp3" if ext == ".mp3" else "aac"
+        t = {"index": 1, "ino": "ino-add-%d" % k, "fname": os.path.basename(path), "path": path, "startOffset": 0,
+             "duration": probe(path), "codec": codec, "mimeType": "audio/mpeg" if codec == "mp3" else "audio/mp4",
+             "ext": ext, "size": os.path.getsize(path)}
+        Handler.books.insert(0, {"id": "add-%d" % k, "title": "Test file %d" % (k + 1), "author": "Local file",
+                                 "series": "", "narrator": "", "tracks": [t], "duration": t["duration"], "chapters": [],
+                                 "cover": "cover0.jpg", "addedAt": 1800000000000 + k})
     srv = ThreadingHTTPServer((a.host, a.port), Handler)
     srv.daemon_threads = True
     print("mock ABS on %s:%d with %d books" % (a.host, a.port, len(Handler.books)), flush=True)

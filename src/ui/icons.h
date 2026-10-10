@@ -13,6 +13,8 @@ typedef enum {
 /* Rasterises icon id into an A8 cell x cell region of dst, centred on its ink
  * bounding box (the play triangle gets a small optical nudge toward its point). */
 void icons_raster(int id, uint8_t *dst, int stride, int cell);
+/* Centred on their circle rather than their ink box (the skip arrows). */
+int icons_circle_anchored(int id);
 /* Horizontal optical offset applied to an icon, as a fraction of the cell. */
 float icons_optical_dx(int id);
 

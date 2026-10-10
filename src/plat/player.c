@@ -123,7 +123,16 @@ static void open_job(void *ud) {
 static void close_session_async(void);
 
 void player_open(const BookSummary *b) {
-    if (P.has_book && !strcmp(P.book.id, b->id) && P.phase == PL_READY) return; /* already open */
+    if (P.has_book && !strcmp(P.book.id, b->id) && P.phase == PL_READY) {
+        /* already open: keep it, unless it failed or a downloaded copy is now available */
+        bool failed = engine_state() == ENG_ERROR;
+        bool now_local = !P.local && dl_is_done(b->id);
+        if (!failed && !now_local) {
+            if (!engine_is_playing()) engine_play();
+            return;
+        }
+        dbg("player: reopening %s (%s)", b->id, failed ? "after an error" : "downloaded copy");
+    }
     if (P.has_book) {
         engine_stop();
         close_session_async();
@@ -418,7 +427,8 @@ const char *player_status(void) {
     if (P.phase == PL_FAILED) return P.error;
     if (!P.has_book) return NULL;
     EngineState s = engine_state();
-    if (s == ENG_ERROR) return engine_error() == STREAM_UNSUPPORTED ? "Format not supported" : "Playback error";
+    if (s == ENG_ERROR) return engine_error() == STREAM_UNSUPPORTED ? "Format not supported" :
+                               engine_error() == STREAM_IO ? "Can't reach the server" : "Playback error";
     int ns = engine_net_state();
     if (ns == HSRC_RECONNECTING) return "Reconnecting\xE2\x80\xA6";
     if (ns == HSRC_FAILED) return "Stream failed";

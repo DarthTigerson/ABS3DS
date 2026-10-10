@@ -348,9 +348,9 @@ static void draw_bottom(void) {
     bool tf = g_chip_focus < 0;
     round_button(28, CY, 20, IC_PREV, 16, g_press[0], COL_SURFACE, COL_DIM, NULL);
     round_button(92, CY, 26, IC_BACK, 34, g_press[1], COL_SURFACE2, COL_TEXT, NULL);
-    gfx_text(F_BOLD, back, 92, CY - 3, 10, COL_TEXT, AL_CENTER);
+    gfx_text_mid(F_BOLD, back, 92, CY, 10, COL_TEXT, AL_CENTER);
     round_button(228, CY, 26, IC_FWD, 34, g_press[3], COL_SURFACE2, COL_TEXT, NULL);
-    gfx_text(F_BOLD, fwd, 228, CY - 3, 10, COL_TEXT, AL_CENTER);
+    gfx_text_mid(F_BOLD, fwd, 228, CY, 10, COL_TEXT, AL_CENTER);
     round_button(292, CY, 20, IC_NEXT, 16, g_press[4], COL_SURFACE, COL_DIM, NULL);
     /* play/pause with a glow while playing */
     float s = 1 - g_press[2] * 0.1f;

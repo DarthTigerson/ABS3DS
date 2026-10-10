@@ -20,6 +20,9 @@ void httpsrc_close(HttpSrc *s);
 /* Makes blocked/future reads return HSRC_INTERRUPTED until cleared. */
 void httpsrc_interrupt(HttpSrc *s, int on);
 int httpsrc_state(HttpSrc *s);
+/* Pauses fetching (closing the connection) while another request runs, and
+ * resumes from where it was. Blocks up to ~3 s until the connection is closed. */
+void httpsrc_hold(HttpSrc *s, int on);
 /* Fraction of the read-ahead ring that is filled, 0..1 */
 float httpsrc_fill(HttpSrc *s);
 

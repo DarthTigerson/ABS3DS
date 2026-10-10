@@ -23,6 +23,8 @@ struct HttpSrc {
     uint64_t rd;                 /* last read position */
     uint64_t want;               /* restart request (or NO_WANT) */
     volatile int quit, interrupted, state;
+    volatile int idle;           /* nothing fetched until the first read says where */
+    volatile int hold, held;     /* paused (connection closed) for another request */
     LightLock lock;
     CondVar cv;
     Thread th;
@@ -45,7 +47,20 @@ static void fetch_thread(void *arg) {
     const char *hdrs[2];
     while (!s->quit) {
         LightLock_Lock(&s->lock);
+        /* paused for another request (the 3DS's HTTP service starves concurrent
+         * transfers), or not started yet: no connection open */
+        if (s->hold || (s->idle && s->want == NO_WANT)) {
+            LightLock_Unlock(&s->lock);
+            if (st) { http_stream_close(st); st = NULL; }
+            s->held = s->hold;
+            LightLock_Lock(&s->lock);
+            CondVar_WaitTimeout(&s->cv, &s->lock, 50000000LL);
+            LightLock_Unlock(&s->lock);
+            continue;
+        }
+        s->held = 0;
         if (s->want != NO_WANT) {
+            s->idle = 0;
             pos = s->want;
             s->want = NO_WANT;
             s->win_start = s->win_end = pos;
@@ -86,6 +101,7 @@ static void fetch_thread(void *arg) {
                 continue;
             }
             if (!s->size && clen) s->size = (status == 206 ? pos : 0) + clen;
+            dbg("stream: reading from %llu (%d)", (unsigned long long)pos, status);
         }
         uint32_t n = space < CHUNK ? space : CHUNK;
         int k = http_stream_read(st, s->chunk, n, 4000);
@@ -146,7 +162,7 @@ static int src_read(void *ctx, uint64_t off, void *buf, uint32_t n) {
             break;
         }
         if (s->size && off >= s->size) { rc = 0; break; }
-        int near = off >= s->win_start && off <= s->win_end + AHEAD_REACH;
+        int near = !s->idle && off >= s->win_start && off <= s->win_end + AHEAD_REACH;
         if (!near && s->want != off) {
             s->want = off;
             CondVar_Broadcast(&s->cv);
@@ -167,6 +183,7 @@ HttpSrc *httpsrc_open(const char *url, uint64_t size, void (*auth)(char *, unsig
     s->auth = auth;
     s->size = size;
     s->want = NO_WANT;
+    s->idle = 1;
     s->state = HSRC_BUFFERING;
     LightLock_Init(&s->lock);
     CondVar_Init(&s->cv);
@@ -190,6 +207,16 @@ void httpsrc_interrupt(HttpSrc *s, int on) {
 }
 
 int httpsrc_state(HttpSrc *s) { return s->state; }
+
+void httpsrc_hold(HttpSrc *s, int on) {
+    if (!s) return;
+    LightLock_Lock(&s->lock);
+    s->hold = on;
+    CondVar_Broadcast(&s->cv);
+    LightLock_Unlock(&s->lock);
+    /* wait (briefly) until the fetch thread has closed its connection */
+    for (int i = 0; on && i < 150 && !s->held && !s->quit; i++) svcSleepThread(20000000LL);
+}
 
 float httpsrc_fill(HttpSrc *s) {
     uint64_t ahead = s->win_end > s->rd ? s->win_end - s->rd : 0;

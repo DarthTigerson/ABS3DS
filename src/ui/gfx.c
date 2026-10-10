@@ -262,6 +262,14 @@ float gfx_text(FontId f, const char *s, float x, float y, float px, u32 c, int a
     return w;
 }
 
+/* Measured on screen (bundled fonts, citro2d): capitals start ~0.33 em below the
+ * line-box top and are ~0.715 em tall, so their middle is ~0.69 em below it. */
+#define CAP_MID_EM 0.69f
+
+float gfx_text_mid(FontId f, const char *s, float x, float cy, float px, u32 c, int align) {
+    return gfx_text(f, s, x, cy - px * CAP_MID_EM, px, c, align);
+}
+
 /* cache of truncation points: hash(font, px, maxw, string) -> byte length */
 #define FIT_CACHE 512
 static struct { u32 key; u16 len; } g_fit[FIT_CACHE];

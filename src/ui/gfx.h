@@ -46,6 +46,8 @@ void gfx_image(const C2D_Image *img, float x, float y, float w, float h, u32 tin
 void gfx_progress(float x, float y, float w, float h, float frac, u32 fg, u32 bg);
 
 float gfx_text(FontId f, const char *s, float x, float y, float px, u32 c, int align);
+/* Centred vertically on the capitals at cy (gfx_text's y is the top of the line box). */
+float gfx_text_mid(FontId f, const char *s, float x, float cy, float px, u32 c, int align);
 /* Truncates with an ellipsis to fit maxw (cached). Returns drawn width. */
 float gfx_text_fit(FontId f, const char *s, float x, float y, float px, float maxw, u32 c, int align);
 float gfx_text_width(FontId f, const char *s, float px);

@@ -68,11 +68,23 @@ static bool is_mp4(const char *ext) {
 typedef struct TablesNet {
     char url[512];
     void (*auth)(char *, unsigned);
+    HttpSrc *stream;          /* paused during table requests: the 3DS's HTTP service starves one of them */
     volatile int interrupted;
+    int failed;               /* a fetch failed (network), as opposed to a bad file */
 } TablesNet;
+
+static int tables_fetch_once(TablesNet *t, uint64_t off, uint32_t len, uint8_t *dst);
 
 static int tables_fetch(void *ud, uint64_t off, uint32_t len, uint8_t *dst) {
     TablesNet *t = ud;
+    httpsrc_hold(t->stream, 1);
+    int rc = tables_fetch_once(t, off, len, dst);
+    httpsrc_hold(t->stream, 0);
+    if (rc < 0 && rc != -3) t->failed = 1;
+    return rc;
+}
+
+static int tables_fetch_once(TablesNet *t, uint64_t off, uint32_t len, uint8_t *dst) {
     for (int attempt = 0; attempt < 3; attempt++) {
         if (t->interrupted) return -3;
         char auth[1100] = "";
@@ -106,6 +118,7 @@ static int open_remote_tables(Stream *s, const TrackSource *src, void (*auth)(ch
     if (!s->net) return STREAM_ERR;
     snprintf(s->net->url, sizeof s->net->url, "%s", src->url);
     s->net->auth = auth;
+    s->net->stream = s->hs;
     s->bc = bc_new(src->size, TABLE_BLOCK, TABLE_BLOCKS, tables_fetch, s->net);
     if (!s->bc) return STREAM_ERR;
     s->tables = bc_reader(s->bc);
@@ -128,6 +141,10 @@ static int open_remote_tables(Stream *s, const TrackSource *src, void (*auth)(ch
         s->aac.mp4 = probe;
         s->kind = K_MP4MP3;
         return 0;
+    }
+    if (s->net->failed) {
+        dbg("moov: couldn't read the sample tables (network)");
+        return STREAM_IO;
     }
     dbg("moov: no AAC or MP3 audio track");
     return STREAM_UNSUPPORTED;

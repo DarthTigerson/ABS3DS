@@ -207,6 +207,11 @@ static float icon_sdf(int id, V p) {
 
 float icons_optical_dx(int id) { return id == IC_PLAY ? 0.03f : 0; }
 
+/* Icons whose visual centre isn't their ink box: the skip arrows read as a circle
+ * (the arrowhead sticks out of it), and a number is drawn in that circle. They are
+ * centred on the circle instead. */
+int icons_circle_anchored(int id) { return id == IC_BACK || id == IC_FWD; }
+
 static void raster_at(int id, uint8_t *dst, int stride, int cell, float ox, float oy) {
     float half = cell * 0.5f;
     for (int y = 0; y < cell; y++)
@@ -219,6 +224,10 @@ static void raster_at(int id, uint8_t *dst, int stride, int cell, float ox, floa
 }
 
 void icons_raster(int id, uint8_t *dst, int stride, int cell) {
+    if (icons_circle_anchored(id)) { /* circle centre (0, 0.04) -> cell centre */
+        raster_at(id, dst, stride, cell, 0, 0.04f);
+        return;
+    }
     /* render once, find the ink box in the pixels, then render again shifted so the
      * box is centred (exact at the target size, and cheap enough for an Old 3DS) */
     raster_at(id, dst, stride, cell, 0, 0);
