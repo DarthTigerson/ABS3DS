@@ -4,10 +4,10 @@ CC      ?= cc
 BUILD   := build-host
 CFLAGS  := -std=gnu11 -O1 -g -Wall -Wextra -Wno-unused-parameter -Wno-sign-compare \
            -fsanitize=address,undefined -fno-omit-frame-pointer \
-           -Isrc -Isrc/core -Ivendor/cjson -Ivendor/sonic -Ivendor/helix-aac -Ivendor/stb -Itests
+           -Isrc -Isrc/core -Isrc/ui -Ivendor/cjson -Ivendor/sonic -Ivendor/helix-aac -Ivendor/stb -Itests
 LDFLAGS := -fsanitize=address,undefined -lm
 
-CORE    := $(wildcard src/core/*.c)
+CORE    := $(wildcard src/core/*.c) src/ui/icons.c
 VENDOR  := vendor/cjson/cJSON.c vendor/sonic/sonic.c $(wildcard vendor/helix-aac/*.c)
 TESTS   := $(wildcard tests/*.c)
 OBJS    := $(patsubst %.c,$(BUILD)/%.o,$(CORE) $(VENDOR) $(TESTS))

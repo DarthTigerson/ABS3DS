@@ -181,15 +181,75 @@ void lib_reload(void) {
     worker_post(g_api, lib_job, NULL);
 }
 
+const char *lib_view_name(int view) {
+    static const char *names[VIEW_COUNT] = {"Title", "Author", "Recent", "Series", "Authors"};
+    return view >= 0 && view < VIEW_COUNT ? names[view] : "Title";
+}
+
+bool lib_listing_groups(void) { return g_lib.view >= VIEW_SERIES && !g_lib.group[0]; }
+
+const Group *lib_group_item(int i) {
+    return lib_listing_groups() && i >= 0 && i < g_lib.norder ? &g_lib.groups[g_lib.order[i]] : NULL;
+}
+
+BookSummary *lib_item_book(int i) {
+    if (i < 0 || i >= g_lib.norder) return NULL;
+    if (lib_listing_groups()) {
+        const Group *g = &g_lib.groups[g_lib.order[i]];
+        return g->count ? &g_lib.books[g->books[0]] : NULL;
+    }
+    return &g_lib.books[g_lib.order[i]];
+}
+
+double lib_item_seq(int i) { return g_lib.seq && i >= 0 && i < g_lib.norder ? g_lib.seq[i] : -1; }
+
 void lib_apply(void) {
     free(g_lib.order);
+    free(g_lib.seq);
+    g_lib.seq = NULL;
+    groups_free(g_lib.groups, g_lib.ngroups);
+    g_lib.groups = NULL;
+    g_lib.ngroups = 0;
+    g_lib.norder = 0;
     g_lib.order = malloc(sizeof(int) * (g_lib.n ? g_lib.n : 1));
-    int *all = malloc(sizeof(int) * (g_lib.n ? g_lib.n : 1));
-    if (!g_lib.order || !all) { free(all); g_lib.norder = 0; return; }
-    for (int i = 0; i < g_lib.n; i++) all[i] = i;
-    lib_sort(g_lib.books, all, g_lib.n, g_lib.sort);
-    g_lib.norder = lib_filter(g_lib.books, all, g_lib.n, g_lib.query, g_lib.order);
-    free(all);
+    if (!g_lib.order) return;
+    if (g_lib.view < VIEW_SERIES) {
+        int *all = malloc(sizeof(int) * (g_lib.n ? g_lib.n : 1));
+        if (!all) return;
+        for (int i = 0; i < g_lib.n; i++) all[i] = i;
+        g_lib.sort = (SortMode)g_lib.view;
+        lib_sort(g_lib.books, all, g_lib.n, g_lib.sort);
+        g_lib.norder = lib_filter(g_lib.books, all, g_lib.n, g_lib.query, g_lib.order);
+        free(all);
+        return;
+    }
+    GroupKind kind = g_lib.view == VIEW_SERIES ? GROUP_SERIES : GROUP_AUTHOR;
+    int ng = groups_build(g_lib.books, g_lib.n, kind, &g_lib.groups);
+    g_lib.ngroups = ng > 0 ? ng : 0;
+    int open = -1;
+    for (int i = 0; i < g_lib.ngroups && g_lib.group[0]; i++)
+        if (!strcmp(g_lib.groups[i].name, g_lib.group)) open = i;
+    if (open < 0) {
+        /* the list of series / authors, filtered by name */
+        g_lib.group[0] = 0;
+        int *o = realloc(g_lib.order, sizeof(int) * (g_lib.ngroups ? g_lib.ngroups : 1));
+        if (!o) return;
+        g_lib.order = o;
+        for (int i = 0; i < g_lib.ngroups; i++)
+            if (!g_lib.query[0] || str_icontains(g_lib.groups[i].name, g_lib.query)) g_lib.order[g_lib.norder++] = i;
+        return;
+    }
+    /* one series / author: its books (series in reading order), filtered by the query */
+    const Group *g = &g_lib.groups[open];
+    g_lib.norder = lib_filter(g_lib.books, g->books, g->count, g_lib.query, g_lib.order);
+    if (g->seq) {
+        g_lib.seq = malloc(sizeof(double) * (g_lib.norder ? g_lib.norder : 1));
+        for (int i = 0; g_lib.seq && i < g_lib.norder; i++) {
+            g_lib.seq[i] = -1;
+            for (int k = 0; k < g->count; k++)
+                if (g->books[k] == g_lib.order[i]) g_lib.seq[i] = g->seq[k];
+        }
+    }
 }
 
 BookSummary *lib_get(const char *id) {

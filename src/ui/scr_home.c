@@ -55,7 +55,41 @@ static int item_count(void) {
 }
 
 static BookSummary *cont_book(int i) { return i < g_lib.ncont ? lib_get(g_lib.cont[i]) : NULL; }
-static BookSummary *lib_book(int i) { return i < g_lib.norder ? &g_lib.books[g_lib.order[i]] : NULL; }
+static BookSummary *lib_book(int i) { return lib_item_book(i); }
+
+/* Library view chip: Title / Author / Recent / Series / Authors */
+static void cycle_view(void) {
+    g_lib.view = (g_lib.view + 1) % VIEW_COUNT;
+    g_lib.group[0] = 0;
+    lib_apply();
+    char m[48];
+    if (g_lib.view >= VIEW_SERIES) snprintf(m, sizeof m, "Browsing by %s", g_lib.view == VIEW_SERIES ? "series" : "author");
+    else snprintf(m, sizeof m, "Sorted by %s", lib_view_name(g_lib.view));
+    app_toast(m);
+    g_focus[TAB_LIBRARY] = 0;
+    g_scroll[TAB_LIBRARY] = 0;
+}
+
+static void open_group(int i) {
+    const Group *g = lib_group_item(i);
+    if (!g) return;
+    str_copy(g_lib.group, sizeof g_lib.group, g->name);
+    lib_apply();
+    g_focus[TAB_LIBRARY] = 0;
+    g_scroll[TAB_LIBRARY] = 0;
+}
+
+/* back from a series/author to the list, focused on the one we came from */
+static void close_group(void) {
+    char name[96];
+    str_copy(name, sizeof name, g_lib.group);
+    g_lib.group[0] = 0;
+    lib_apply();
+    g_focus[TAB_LIBRARY] = 0;
+    for (int i = 0; i < g_lib.norder; i++)
+        if (!strcmp(lib_group_item(i)->name, name)) g_focus[TAB_LIBRARY] = i;
+    g_scroll[TAB_LIBRARY] = 0;
+}
 
 static BookSummary *focused_book(void) {
     int f = g_focus[g_tab];
@@ -145,6 +179,7 @@ static void setting_activate(int i) {
 static void activate(int i) {
     if (g_tab == TAB_SETTINGS) { setting_activate(i); return; }
     BookSummary *b = g_tab == TAB_CONTINUE ? cont_book(i) : g_tab == TAB_LIBRARY ? lib_book(i) : NULL;
+    if (g_tab == TAB_LIBRARY && lib_listing_groups()) { open_group(i); return; }
     if (g_tab == TAB_DOWNLOADS && i < g_ndl) {
         b = focused_book();
         if (g_dl[i].state == DL_DONE) { app_play_book(b); return; }
@@ -194,15 +229,7 @@ static void update(const Input *in, float dt) {
     if (g_tab == TAB_LIBRARY) {
         if (in->repeat & (KEY_RIGHT | KEY_CPAD_RIGHT)) { if (*f + 1 < n) (*f)++; keep_visible(*f); }
         if (in->repeat & (KEY_LEFT | KEY_CPAD_LEFT)) { if (*f > 0) (*f)--; keep_visible(*f); }
-        if (in->down & KEY_Y) {
-            g_lib.sort = (g_lib.sort + 1) % SORT_COUNT;
-            lib_apply();
-            char m[48];
-            snprintf(m, sizeof m, "Sorted by %s", lib_sort_name(g_lib.sort));
-            app_toast(m);
-            *f = 0;
-            g_scroll[g_tab] = 0;
-        }
+        if (in->down & KEY_Y) cycle_view();
         if (in->down & KEY_X) {
             char q[64];
             if (app_keyboard("Search title or author", g_lib.query, false, q, sizeof q)) {
@@ -212,7 +239,10 @@ static void update(const Input *in, float dt) {
                 g_scroll[g_tab] = 0;
             }
         }
-        if ((in->down & KEY_B) && g_lib.query[0]) { g_lib.query[0] = 0; lib_apply(); }
+        if (in->down & KEY_B) {
+            if (g_lib.group[0]) close_group();
+            else if (g_lib.query[0]) { g_lib.query[0] = 0; lib_apply(); }
+        }
     }
     if (g_tab == TAB_DOWNLOADS && *f < g_ndl) {
         if (in->down & KEY_X) {
@@ -235,7 +265,7 @@ static void update(const Input *in, float dt) {
     if (in->touch_up && in->dragging) *v = -in->fling_vy;
     if (in->tap && in->ty > TAB_H && in->ty < content_bottom()) {
         if (g_tab == TAB_LIBRARY && in->ty - TAB_H + *s < HEAD_H) {
-            if (in->tx < 110) { g_lib.sort = (g_lib.sort + 1) % SORT_COUNT; lib_apply(); }
+            if (in->tx < 150) { if (g_lib.group[0]) close_group(); else cycle_view(); }
             else if (in->tx > 210) {
                 char q[64];
                 if (app_keyboard("Search title or author", g_lib.query, false, q, sizeof q)) { str_copy(g_lib.query, sizeof g_lib.query, q); lib_apply(); }
@@ -304,12 +334,14 @@ static void draw_library(float top, float a) {
     /* header: sort + search chips */
     float hy = top - s + 4;
     if (hy > top - HEAD_H) {
-        char lbl[48];
-        snprintf(lbl, sizeof lbl, "%s", lib_sort_name(g_lib.sort));
-        float w = gfx_text_width(F_UI, lbl, 13) + 34;
-        gfx_rrect(8, hy, w, 22, 11, COL_SURFACE);
-        gfx_icon(IC_SORT, 20, hy + 11, 12, COL_DIM);
-        gfx_text(F_UI, lbl, 30, hy + 4, 13, COL_TEXT, AL_LEFT);
+        char lbl[112];
+        bool open = g_lib.group[0] != 0;
+        snprintf(lbl, sizeof lbl, "%s", open ? g_lib.group : lib_view_name(g_lib.view));
+        float w = gfx_text_width(open ? F_SYS : F_UI, lbl, 13) + 34;
+        if (w > 140) w = 140;
+        gfx_rrect(8, hy, w, 22, 11, open ? col_alpha(app_accent(), 0.3f) : COL_SURFACE);
+        gfx_icon(open ? IC_CHEVRON_LEFT : IC_SORT, 20, hy + 11, 12, open ? COL_TEXT : COL_DIM);
+        gfx_text_fit(open ? F_SYS : F_UI, lbl, 30, hy + 4, 13, w - 28, COL_TEXT, AL_LEFT);
         const char *q = g_lib.query[0] ? g_lib.query : "Search";
         float qw = gfx_text_width(F_SYS, q, 13) + 34;
         if (qw > 150) qw = 150;
@@ -317,7 +349,8 @@ static void draw_library(float top, float a) {
         gfx_icon(IC_SEARCH, 312 - qw + 13, hy + 11, 12, COL_DIM);
         gfx_text_fit(F_SYS, q, 312 - qw + 24, hy + 4, 13, qw - 30, g_lib.query[0] ? COL_TEXT : COL_DIM, AL_LEFT);
         char cnt[24];
-        snprintf(cnt, sizeof cnt, "%d", g_lib.norder);
+        if (lib_listing_groups()) snprintf(cnt, sizeof cnt, "%d %s", g_lib.norder, g_lib.view == VIEW_SERIES ? "series" : "authors");
+        else snprintf(cnt, sizeof cnt, "%d", g_lib.norder);
         gfx_text(F_UI, cnt, 160, hy + 5, 12, COL_FAINT, AL_CENTER);
     }
     int n = g_lib.norder;
@@ -330,9 +363,31 @@ static void draw_library(float top, float a) {
         if (y > bottom) break;
         if (y + CELL_H < top) continue;
         BookSummary *b = lib_book(i);
+        if (!b) continue;
         float x = (i % GRID_COLS) * CELL_W + (CELL_W - COVER) / 2;
         bool f = i == g_focus[TAB_LIBRARY];
+        const Group *grp = lib_group_item(i);
+        if (grp) {
+            /* a series / author: stacked covers, the name and the book count */
+            if (grp->count > 1) gfx_rrect(x + 6, y, COVER - 12, 6, 3, col_alpha(COL_TEXT, 0.18f * a));
+            if (grp->count > 2) gfx_rrect(x + 12, y - 4, COVER - 24, 6, 3, col_alpha(COL_TEXT, 0.10f * a));
+            draw_cover(b, x, y + 4, COVER, a);
+            char cnt[24];
+            snprintf(cnt, sizeof cnt, "%d book%s", grp->count, grp->count == 1 ? "" : "s");
+            gfx_text_fit(F_SYS, grp->name, x + COVER / 2, y + COVER + 8, 12, COVER + 10, f ? COL_TEXT : COL_DIM, AL_CENTER);
+            gfx_text_fit(F_UI, cnt, x + COVER / 2, y + COVER + 22, 10.5f, COVER + 6, COL_FAINT, AL_CENTER);
+            continue;
+        }
         draw_cover(b, x, y + 4, COVER, a);
+        double sq = lib_item_seq(i);
+        if (sq >= 0) {
+            char num[12];
+            snprintf(num, sizeof num, "%g", sq);
+            float bw = gfx_text_width(F_BOLD, num, 11) + 12;
+            if (bw < 20) bw = 20;
+            gfx_rrect(x + 4, y + 8, bw, 18, 9, RGBA(0, 0, 0, 190));
+            gfx_text(F_BOLD, num, x + 4 + bw / 2, y + 10, 11, COL_TEXT, AL_CENTER);
+        }
         if (b->progress > 0.01f && !b->finished) gfx_progress(x + 4, y + COVER - 3, COVER - 8, 3, b->progress, app_accent(), RGBA(0, 0, 0, 150));
         if (dl_is_done(b->id)) {
             gfx_circle(x + COVER - 9, y + 13, 8, app_accent());
@@ -342,7 +397,9 @@ static void draw_library(float top, float a) {
         gfx_text_fit(F_SYS, b->author, x + COVER / 2, y + COVER + 22, 10.5f, COVER + 6, COL_FAINT, AL_CENTER);
     }
     if (!n && !g_lib.loading) {
-        gfx_text(F_UI, g_lib.query[0] ? "No matches. Press B to clear." : "Your library is empty", 160, top + 70, 14, COL_DIM, AL_CENTER);
+        const char *msg = g_lib.query[0] ? "No matches. Press B to clear." :
+                          g_lib.view == VIEW_SERIES ? "No series in this library" : "Your library is empty";
+        gfx_text(F_UI, msg, 160, top + 70, 14, COL_DIM, AL_CENTER);
     }
 }
 

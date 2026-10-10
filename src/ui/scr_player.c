@@ -1,6 +1,6 @@
 /* Now Playing. Top: cover, chapter, progress. Bottom: transport controls,
- * chapter scrubber, speed / sleep / chapters / screen-off chips, and a
- * slide-up chapter list. */
+ * chapter scrubber, speed / sleep / chapters chips, download and book-details
+ * buttons, and a slide-up chapter list. */
 #include <math.h>
 #include <stdio.h>
 #include <string.h>
@@ -8,6 +8,7 @@
 #include "anim.h"
 #include "app.h"
 #include "covers.h"
+#include "downloads.h"
 #include "engine.h"
 #include "gfx.h"
 #include "player.h"
@@ -27,7 +28,12 @@ static int g_sheet_focus;
 static float g_sheet_scroll;
 static bool g_scrubbing;
 static double g_scrub_t;
-static int g_chip_focus = -1; /* -1 transport, 0..3 chips */
+static int g_chip_focus = -1; /* -1 transport, 0..2 chips, 3 download, 4 book details */
+#define NCHIPS 5
+#define CHIP_W 74.0f
+#define CHIP_STEP 78.0f
+#define ROUND 32.0f /* download / details buttons */
+static float round_x(int i) { return 8 + 3 * CHIP_STEP + (i - 3) * (ROUND + 4); }
 static float g_play_morph;    /* 0 play .. 1 pause */
 static float g_disp_frac;     /* smoothed progress */
 
@@ -72,7 +78,32 @@ static void chip_action(int i) {
         }
         break;
     }
-    case 3: sys_backlight(false); break;
+    case 3: {
+        const BookDetail *b = book();
+        if (!b) break;
+        DlState st = dl_state(b->id, NULL);
+        if (st == DL_QUEUED || st == DL_ACTIVE) { dl_cancel(b->id); app_toast("Download paused"); }
+        else if (st == DL_DONE) app_toast("Saved on the SD card");
+        else if (dl_start(b) == 0) app_toast("Downloading for offline listening");
+        else app_toast("Couldn't start the download");
+        break;
+    }
+    case 4: {
+        const BookDetail *b = book();
+        if (!b) break;
+        BookSummary *s = lib_get(b->id);
+        BookSummary tmp;
+        if (!s) {
+            memset(&tmp, 0, sizeof tmp);
+            str_copy(tmp.id, sizeof tmp.id, b->id);
+            str_copy(tmp.title, sizeof tmp.title, b->title);
+            str_copy(tmp.author, sizeof tmp.author, b->author);
+            tmp.duration = b->duration;
+            s = &tmp;
+        }
+        app_open_book(s);
+        break;
+    }
     }
 }
 
@@ -122,7 +153,7 @@ static void update(const Input *in, float dt) {
     if (in->repeat & KEY_RIGHT && g_chip_focus < 0) { player_skip(g_cfg.skip_fwd); press(3); }
     if (g_chip_focus >= 0) {
         if (in->repeat & KEY_LEFT) g_chip_focus = g_chip_focus > 0 ? g_chip_focus - 1 : 0;
-        if (in->repeat & KEY_RIGHT) g_chip_focus = g_chip_focus < 3 ? g_chip_focus + 1 : 3;
+        if (in->repeat & KEY_RIGHT) g_chip_focus = g_chip_focus < NCHIPS - 1 ? g_chip_focus + 1 : NCHIPS - 1;
     }
     if (in->down & (KEY_DOWN | KEY_CPAD_DOWN)) g_chip_focus = g_chip_focus < 0 ? 0 : g_chip_focus;
     if (in->down & (KEY_UP | KEY_CPAD_UP)) g_chip_focus = -1;
@@ -141,9 +172,13 @@ static void update(const Input *in, float dt) {
             else if (x < 52) { player_chapter(-1); press(0); }
             else if (x > 268) { player_chapter(1); press(4); }
         }
-        if (y > CHIP_Y - 4 && y < CHIP_Y + 34) {
-            int i = (int)((x - 8) / 77);
-            if (i >= 0 && i < 4) chip_action(i);
+        if (y > CHIP_Y - 4 && y < CHIP_Y + 36) {
+            if (x < round_x(3)) {
+                int i = (int)((x - 8) / CHIP_STEP);
+                if (i >= 0 && i < 3) chip_action(i);
+            } else {
+                chip_action(x < round_x(4) - 2 ? 3 : 4);
+            }
         }
     }
 
@@ -355,16 +390,35 @@ static void draw_bottom(void) {
     char sp[16], sl[24];
     snprintf(sp, sizeof sp, "%g\xC3\x97", player_speed());
     player_sleep_label(sl, sizeof sl);
-    const char *labels[4] = {sp, sl, "Chapters", "Screen"};
-    IconId icons[4] = {IC_SPEED, IC_MOON, IC_LIST, IC_SCREEN};
-    for (int i = 0; i < 4; i++) {
-        float x = 8 + i * 77, w = 73;
+    const char *labels[3] = {sp, sl, "Chapters"};
+    IconId icons[3] = {IC_SPEED, IC_MOON, IC_LIST};
+    for (int i = 0; i < 3; i++) {
+        float x = 8 + i * CHIP_STEP, w = CHIP_W;
         bool active = (i == 0 && fabsf(player_speed() - 1) > 0.01f) || (i == 1 && player_sleep()->mode != SLEEP_OFF);
         bool focus = g_chip_focus == i;
         if (focus) gfx_focus_ring(x, CHIP_Y, w, 32, 10, 2, col_alpha(COL_TEXT, 0.7f));
         gfx_rrect(x, CHIP_Y, w, 32, 10, active ? col_mix(COL_SURFACE, acc, 0.3f) : COL_SURFACE);
         gfx_icon(icons[i], x + 12, CHIP_Y + 16, 13, active ? acc : COL_DIM);
         gfx_text_fit(F_UI, labels[i], x + 22, CHIP_Y + 9, 11, w - 25, active ? COL_TEXT : COL_DIM, AL_LEFT);
+    }
+    /* download (its state) and book details: round icon buttons */
+    float pct = 0;
+    DlState ds = dl_state(b->id, &pct);
+    IconId dl_icon = ds == DL_DONE ? IC_CHECK : ds == DL_ACTIVE || ds == DL_QUEUED ? IC_PAUSE : IC_DOWNLOAD;
+    for (int i = 3; i < NCHIPS; i++) {
+        float x = round_x(i), r = ROUND / 2, cx = x + r, cy = CHIP_Y + 16;
+        if (g_chip_focus == i) gfx_focus_ring(x, CHIP_Y, ROUND, ROUND, r, 2, col_alpha(COL_TEXT, 0.7f));
+        gfx_circle(cx, cy, r, COL_SURFACE);
+        if (i == 3 && (ds == DL_ACTIVE || ds == DL_PAUSED) && pct > 0) {
+            /* progress: an arc of dots around the button */
+            int dots = 16, lit = (int)(pct * dots + 0.5f);
+            for (int k = 0; k < dots; k++) {
+                float ang = -1.5708f + k * 6.2832f / dots;
+                gfx_circle(cx + cosf(ang) * (r - 2.5f), cy + sinf(ang) * (r - 2.5f), 1.4f, k < lit ? acc : col_alpha(COL_TEXT, 0.15f));
+            }
+        }
+        if (i == 3) gfx_icon(dl_icon, cx, cy, 14, ds == DL_DONE ? acc : COL_DIM);
+        else gfx_icon(IC_INFO, cx, cy, 15, COL_DIM);
     }
     gfx_text(F_UI, "L/R chapter \xC2\xB7 left/right skip \xC2\xB7 X chapters", 160, 222, 10.5f, col_alpha(COL_FAINT, 0.8f), AL_CENTER);
     draw_sheet();

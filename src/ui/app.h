@@ -5,6 +5,7 @@
 #include <stdbool.h>
 
 #include "config.h"
+#include "groups.h"
 #include "library.h"
 #include "models.h"
 #include "progress_queue.h"
@@ -45,9 +46,14 @@ void app_save_queue(void);
 typedef struct {
     BookSummary *books;
     int n;
-    int *order;          /* sorted + filtered indices */
+    int *order;          /* sorted + filtered indices (of books, or of groups while listing them) */
     int norder;
     SortMode sort;
+    int view;            /* VIEW_*: a sort order, or browsing by series / authors */
+    Group *groups;       /* for the series / authors views */
+    int ngroups;
+    char group[96];      /* the series or author opened ("" = list them) */
+    double *seq;         /* series number per order entry inside a series (-1 unknown) */
     char query[64];
     char cont[24][40];   /* continue listening ids, most recent first */
     int ncont;
@@ -57,7 +63,13 @@ typedef struct {
 } Library;
 extern Library g_lib;
 void lib_reload(void);
-void lib_apply(void);    /* re-sort/filter after changing sort/query */
+void lib_apply(void);    /* re-sort/filter after changing view/query/group */
+enum { VIEW_TITLE, VIEW_AUTHOR, VIEW_RECENT, VIEW_SERIES, VIEW_AUTHORS, VIEW_COUNT };
+const char *lib_view_name(int view);
+bool lib_listing_groups(void);              /* the grid shows series/authors, not books */
+const Group *lib_group_item(int i);         /* while listing groups */
+BookSummary *lib_item_book(int i);          /* the book at grid position i (a group's first book) */
+double lib_item_seq(int i);                 /* series number badge, or -1 */
 BookSummary *lib_get(const char *id);
 
 /* the book opened in the details screen */

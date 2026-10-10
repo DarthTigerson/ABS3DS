@@ -175,6 +175,27 @@ static float icon_sdf(int id, V p) {
         d = uni(d, sd_seg(p, (V){0, 0}, (V){0, -0.36f}, W * 0.9f));
         return uni(d, sd_seg(p, (V){0, 0}, (V){0.26f, 0.12f}, W * 0.9f));
     }
+    case IC_SERIES: {
+        float d = sd_box(p, (V){-0.42f, 0.08f}, (V){0.14f, 0.5f}, 0.04f);
+        d = uni(d, sd_box(p, (V){-0.04f, 0.0f}, (V){0.14f, 0.58f}, 0.04f));
+        V lean[4] = {{0.2f, -0.36f}, {0.44f, -0.44f}, {0.72f, 0.5f}, {0.48f, 0.58f}};
+        return uni(d, sd_poly(p, lean, 4) - 0.02f);
+    }
+    case IC_PS_CIRCLE:
+        return outline(sd_circle(p, (V){0, 0}, 0.5f), W);
+    case IC_PS_SQUARE:
+        return outline(sd_box(p, (V){0, 0}, (V){0.46f, 0.46f}, 0.04f), W);
+    case IC_PS_TRIANGLE: {
+        V t[3] = {{0, -0.52f}, {0.56f, 0.44f}, {-0.56f, 0.44f}};
+        return outline(sd_poly(p, t, 3), W);
+    }
+    case IC_PS_CROSS:
+        return uni(sd_seg(p, (V){-0.48f, -0.48f}, (V){0.48f, 0.48f}, W), sd_seg(p, (V){0.48f, -0.48f}, (V){-0.48f, 0.48f}, W));
+    case IC_INFO: {
+        float d = outline(sd_circle(p, (V){0, 0}, 0.62f), W * 0.9f);
+        d = uni(d, sd_circle(p, (V){0, -0.3f}, 0.1f));
+        return uni(d, sd_seg(p, (V){0, -0.06f}, (V){0, 0.34f}, W));
+    }
     case IC_HOME: {
         V roof[3] = {{-0.66f, -0.02f}, {0, -0.62f}, {0.66f, -0.02f}};
         float d = uni(sd_poly(p, roof, 3), sd_box(p, (V){0, 0.3f}, (V){0.46f, 0.34f}, 0.04f));
@@ -184,14 +205,36 @@ static float icon_sdf(int id, V p) {
     return 1;
 }
 
-/* Fills an A8 buffer region (cell x cell) with icon id. */
-void icons_raster(int id, uint8_t *dst, int stride, int cell) {
+float icons_optical_dx(int id) { return id == IC_PLAY ? 0.03f : 0; }
+
+static void raster_at(int id, uint8_t *dst, int stride, int cell, float ox, float oy) {
     float half = cell * 0.5f;
     for (int y = 0; y < cell; y++)
         for (int x = 0; x < cell; x++) {
-            V p = {(x + 0.5f - half) / half * 1.0f, (y + 0.5f - half) / half * 1.0f};
+            V p = {(x + 0.5f - half) / half + ox, (y + 0.5f - half) / half + oy};
             float d = icon_sdf(id, p) * half; /* in pixels */
             float a = 0.5f - d;
             dst[y * stride + x] = (uint8_t)(a <= 0 ? 0 : a >= 1 ? 255 : a * 255);
         }
+}
+
+void icons_raster(int id, uint8_t *dst, int stride, int cell) {
+    /* render once, find the ink box in the pixels, then render again shifted so the
+     * box is centred (exact at the target size, and cheap enough for an Old 3DS) */
+    raster_at(id, dst, stride, cell, 0, 0);
+    int x0 = cell, y0 = cell, x1 = -1, y1 = -1;
+    for (int y = 0; y < cell; y++)
+        for (int x = 0; x < cell; x++)
+            if (dst[y * stride + x] > 127) {
+                if (x < x0) x0 = x;
+                if (x > x1) x1 = x;
+                if (y < y0) y0 = y;
+                if (y > y1) y1 = y;
+            }
+    if (x1 < 0) return;
+    float half = cell * 0.5f;
+    /* pixel offset of the ink centre from the cell centre, in unit space (one cell = 2 units) */
+    float ox = ((x0 + x1 + 1) * 0.5f - half) / half, oy = ((y0 + y1 + 1) * 0.5f - half) / half;
+    ox -= icons_optical_dx(id) * 2.0f; /* moving the origin left moves the ink right */
+    raster_at(id, dst, stride, cell, ox, oy);
 }
