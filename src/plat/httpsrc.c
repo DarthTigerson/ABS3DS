@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "dbg.h"
 #include "http.h"
 
 #define RING_SIZE (1u << 20)
@@ -77,6 +78,7 @@ static void fetch_thread(void *arg) {
             if (http_stream_open(s->url, hdrs, pos, 0, &st, &status, &clen) != 0 || (status != 206 && status != 200) ||
                 (status == 200 && pos != 0)) {
                 if (st) { http_stream_close(st); st = NULL; }
+                dbg("stream: open at %llu -> %d (%s)", (unsigned long long)pos, status, http_last_error());
                 s->state = (status == 401 || status == 403 || status == 404) && backoff > 3 ? HSRC_FAILED : HSRC_RECONNECTING;
                 int wait_ms = backoff < 4 ? 1000 << backoff : 10000;
                 backoff++;
@@ -219,8 +221,8 @@ static int range_read(void *ctx, uint64_t off, void *buf, uint32_t n) {
         uint64_t clen;
         uint32_t want = n > sizeof c->cache ? n : sizeof c->cache;
         if (want > sizeof c->cache) want = sizeof c->cache;
-        if (http_stream_open(c->url, hdrs, off, off + want - 1, &st, &status, &clen) != 0) return -1;
-        if (status != 206) { http_stream_close(st); return -1; }
+        if (http_stream_open(c->url, hdrs, off, off + want - 1, &st, &status, &clen) != 0) { dbg("range %llu: %s", (unsigned long long)off, http_last_error()); return -1; }
+        if (status != 206) { dbg("range %llu -> %d", (unsigned long long)off, status); http_stream_close(st); return -1; }
         uint32_t got = 0;
         while (got < want) {
             int k = http_stream_read(st, c->cache + got, want - got, 8000);
@@ -255,8 +257,8 @@ int http_fetch_range_to_file(const char *url, void (*auth)(char *, unsigned), ui
     HttpStream *st;
     int status;
     uint64_t clen;
-    if (http_stream_open(url, hdrs, from, from + len - 1, &st, &status, &clen) != 0) return -1;
-    if (status != 206) { http_stream_close(st); return -1; }
+    if (http_stream_open(url, hdrs, from, from + len - 1, &st, &status, &clen) != 0) { dbg("fetch %llu+%llu: %s", (unsigned long long)from, (unsigned long long)len, http_last_error()); return -1; }
+    if (status != 206) { dbg("fetch %llu+%llu -> %d", (unsigned long long)from, (unsigned long long)len, status); http_stream_close(st); return -1; }
     char tmp[256];
     snprintf(tmp, sizeof tmp, "%s.part", path);
     FILE *f = fopen(tmp, "wb");

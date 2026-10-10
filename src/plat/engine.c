@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "dbg.h"
 #include "httpsrc.h"
 #include "sys.h"
 #include "sonic.h"
@@ -99,8 +100,10 @@ static int buffers_queued(void) {
 static int open_track(int i, double t) {
     close_stream();
     int err = 0;
+    dbg("engine: open track %d at %.1f (%s)", i, t, E.book.sources[i].local ? E.book.sources[i].path : E.book.sources[i].url);
     Stream *s = stream_open(&E.book.sources[i], E.auth, &err);
-    if (!s) return err ? err : STREAM_ERR;
+    if (!s) { dbg("engine: track %d open failed %d", i, err); return err ? err : STREAM_ERR; }
+    dbg("engine: track %d open", i);
     double actual = t;
     if (t > 0.05 && stream_seek(s, t, &actual) != 0) actual = 0;
     LightLock_Lock(&E.lock);
@@ -199,7 +202,7 @@ static int fill(int i) {
         }
         int cur_before = E.cur;
         int rc = pull_decoded();
-        if (rc < 0) { E.error = rc; set_state(ENG_ERROR); break; }
+        if (rc < 0) { dbg("engine: decode error %d", rc); E.error = rc; set_state(ENG_ERROR); break; }
         if (rc == 0) {
             if (E.cur != cur_before && frames == 0) {
                 t0 = E.anchor_t; /* fresh track, fresh anchor */
@@ -324,7 +327,15 @@ static void engine_thread(void *arg) {
             u64 t0 = svcGetSystemTick();
             /* first decode configures the channel */
             if (!E.rate && E.st) {
-                if (pull_decoded() > 0) configure_channel(E.dec_rate, E.dec_ch);
+                int pr = pull_decoded();
+                if (pr > 0) {
+                    dbg("engine: first audio %d Hz, %d ch", E.dec_rate, E.dec_ch);
+                    configure_channel(E.dec_rate, E.dec_ch);
+                } else if (pr < 0) {
+                    dbg("engine: first decode error %d", pr);
+                    E.error = pr;
+                    set_state(ENG_ERROR);
+                }
             }
             if (E.rate) {
                 for (int i = 0; i < NBUF; i++) {

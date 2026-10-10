@@ -9,6 +9,7 @@
 #include <sys/stat.h>
 
 #include "aacstream.h"
+#include "dbg.h"
 #include "httpsrc.h"
 #include "mp3.h"
 #include "mp4.h"
@@ -72,11 +73,15 @@ static int open_remote_tables(Stream *s, const TrackSource *src, void (*auth)(ch
         Reader rr;
         range_reader_open(&rr, &rc, src->url, src->size, auth);
         uint64_t o, z;
-        if (mp4_find_moov(&rr, &o, &z) != 0 || z > MOOV_MAX) return STREAM_UNSUPPORTED;
+        if (mp4_find_moov(&rr, &o, &z) != 0 || z > MOOV_MAX) {
+            dbg("moov: not found in %s (size %llu)", src->url, (unsigned long long)src->size);
+            return STREAM_UNSUPPORTED;
+        }
+        dbg("moov: at %llu, %llu bytes", (unsigned long long)o, (unsigned long long)z);
         mkdir("sdmc:/3ds", 0777);
         mkdir("sdmc:/3ds/shelf3ds", 0777);
         mkdir(MOOV_DIR, 0777);
-        if (http_fetch_range_to_file(src->url, auth, o, z, path) != 0) return STREAM_IO;
+        if (http_fetch_range_to_file(src->url, auth, o, z, path) != 0) { dbg("moov: download failed"); return STREAM_IO; }
         moov_off = o;
         moov_size = z;
         f = fopen(offp, "w");
@@ -85,6 +90,7 @@ static int open_remote_tables(Stream *s, const TrackSource *src, void (*auth)(ch
     if (reader_file_open(&s->tables, &s->ftables, path, moov_off, src->size) != 0) return STREAM_IO;
     s->tables_open = true;
     if (aacs_open_at(&s->aac, &s->media, &s->tables, moov_off, moov_size) == 0) return 0;
+    dbg("moov: not AAC, probing MP3-in-MP4");
     /* MP3-in-MP4 */
     static Mp4 probe;
     if (mp4_open_at(&probe, &s->tables, moov_off, moov_size) == 0 && probe.codec == MP4_MP3) {

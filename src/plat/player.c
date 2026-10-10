@@ -6,6 +6,7 @@
 #include <string.h>
 
 #include "abs_client.h"
+#include "dbg.h"
 #include "downloads.h"
 #include "engine.h"
 #include "httpsrc.h"
@@ -97,7 +98,12 @@ static void open_job(void *ud) {
         return;
     }
     if (absc_have_session()) prc = absc_play(id, sys_model(), &s);
+    dbg("play %s -> rc %d", id, prc);
     if (prc == ABS_OK) {
+        dbg("play session %s: %d tracks, %.0f s, start %.0f", s.id, s.book.ntracks, s.book.duration, s.current_time);
+        for (int i = 0; i < s.book.ntracks && i < 4; i++)
+            dbg("  track %d: ext '%s' codec '%s' size %llu url %s", i, s.book.tracks[i].ext, s.book.tracks[i].codec,
+                (unsigned long long)s.book.tracks[i].size, s.book.tracks[i].content_url);
         r->book = s.book;
         str_copy(r->session, sizeof r->session, s.id);
         r->start = resume_position(id, s.current_time, j->hint.progress_updated);
@@ -166,6 +172,7 @@ static void take_open_result(void) {
     if (!r) return;
     if (r->gen != P.open_gen) { book_detail_free(&r->book); free(r); return; }
     if (r->rc != 0) {
+        dbg("open failed: %s", r->msg);
         P.phase = PL_FAILED;
         str_copy(P.error, sizeof P.error, r->msg);
         free(r);
@@ -182,6 +189,7 @@ static void take_open_result(void) {
     for (int i = 0; i < r->book.ntracks; i++)
         if (!stream_supported(r->book.tracks[i].ext, r->book.tracks[i].codec)) supported = false;
     if (!supported) {
+        dbg("open failed: format not supported");
         P.phase = PL_FAILED;
         str_copy(P.error, sizeof P.error, "Format not supported");
         book_detail_free(&r->book);

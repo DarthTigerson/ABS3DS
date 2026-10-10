@@ -117,8 +117,12 @@ static int refresh_token_locked(void) {
     HttpResp r;
     if (http_request("POST", url, hdrs, NULL, 0, 1 << 20, &r) != 0) { note_net(0); return ABS_ERR_NET; }
     note_net(1);
+    dbg("refresh -> %d", r.status);
     int rc;
-    if (r.status == 200) rc = store_tokens(r.data);
+    if (r.status == 200) {
+        rc = store_tokens(r.data);
+        if (rc != ABS_OK) dbg("refresh: unexpected reply: %.120s", r.data ? r.data : "");
+    }
     else if (r.status == 401 || r.status == 403) {
         rc = ABS_ERR_AUTH;
         absc_logout();
