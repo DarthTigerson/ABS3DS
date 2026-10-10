@@ -18,3 +18,4 @@ docs/
 *.swp
 .claude/
 Thumbs.db
+tests/media/

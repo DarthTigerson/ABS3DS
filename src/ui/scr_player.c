@@ -58,7 +58,10 @@ static void press(int i) { g_press[i] = 1; }
 
 static void chip_action(int i) {
     switch (i) {
-    case 0: player_cycle_speed(); break;
+    case 0:
+        if (player_speed_locked()) app_toast("Old 3DS plays at 1x only");
+        else player_cycle_speed();
+        break;
     case 1: player_cycle_sleep(); break;
     case 2: {
         const BookDetail *b = book();

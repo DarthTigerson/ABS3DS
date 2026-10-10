@@ -32,6 +32,8 @@ void player_skip(double seconds);
 void player_chapter(int dir);
 void player_jump(double t);
 void player_cycle_speed(void);
+/* true on Old 3DS models, which play at 1x only */
+bool player_speed_locked(void);
 void player_set_speed(float s);
 float player_speed(void);
 void player_cycle_sleep(void);

@@ -9,14 +9,14 @@
 #include <sys/stat.h>
 
 #include "aacstream.h"
+#include "blockcache.h"
 #include "dbg.h"
+#include "http.h"
 #include "httpsrc.h"
 #include "mp3.h"
 #include "mp4.h"
 #include "reader.h"
 
-#define MOOV_DIR "sdmc:/3ds/shelf3ds/moov"
-#define MOOV_MAX (48u << 20)
 
 enum { K_AAC, K_MP3, K_MP4MP3 };
 
@@ -26,10 +26,12 @@ struct Stream {
     HttpSrc *hs;
     FileReaderCtx fmedia;
     Reader media;
-    /* tables source (moov) */
+    /* tables source (moov): a local file, or HTTP ranges through a block cache */
     FileReaderCtx ftables;
     Reader tables;
     bool tables_open;
+    BlockCache *bc;
+    struct TablesNet *net;
     AacStream aac;
     /* mp3 */
     mpg123_handle *mh;
@@ -56,41 +58,70 @@ static bool is_mp4(const char *ext) {
     return !strcasecmp(ext, ".m4b") || !strcasecmp(ext, ".m4a") || !strcasecmp(ext, ".mp4");
 }
 
-/* Finds (or downloads) the moov of a remote file into the SD cache. */
-static int open_remote_tables(Stream *s, const TrackSource *src, void (*auth)(char *, unsigned)) {
-    char path[200], offp[200];
-    snprintf(path, sizeof path, MOOV_DIR "/%s.moov", src->cache_key);
-    snprintf(offp, sizeof offp, MOOV_DIR "/%s.off", src->cache_key);
-    unsigned long long moov_off = 0, moov_size = 0;
-    FILE *f = fopen(offp, "r");
-    if (f) {
-        if (fscanf(f, "%llu %llu", &moov_off, &moov_size) != 2) moov_off = moov_size = 0;
-        fclose(f);
-    }
-    struct stat st;
-    if (!moov_size || stat(path, &st) != 0 || (unsigned long long)st.st_size != moov_size) {
-        static RangeReaderCtx rc; /* only used from the engine thread */
-        Reader rr;
-        range_reader_open(&rr, &rc, src->url, src->size, auth);
-        uint64_t o, z;
-        if (mp4_find_moov(&rr, &o, &z) != 0 || z > MOOV_MAX) {
-            dbg("moov: not found in %s (size %llu)", src->url, (unsigned long long)src->size);
-            return STREAM_UNSUPPORTED;
+/* ---- remote sample tables: Range requests through a block cache ------------------
+ * The demuxer reads only the moov atoms it needs, a few KB at a time, so a 20 h book
+ * starts after a handful of small requests instead of a multi-MB moov download. */
+
+#define TABLE_BLOCK (32u * 1024)
+#define TABLE_BLOCKS 16
+
+typedef struct TablesNet {
+    char url[512];
+    void (*auth)(char *, unsigned);
+    volatile int interrupted;
+} TablesNet;
+
+static int tables_fetch(void *ud, uint64_t off, uint32_t len, uint8_t *dst) {
+    TablesNet *t = ud;
+    for (int attempt = 0; attempt < 3; attempt++) {
+        if (t->interrupted) return -3;
+        char auth[1100] = "";
+        if (t->auth) t->auth(auth, sizeof auth);
+        const char *hdrs[] = {auth[0] ? auth : NULL, NULL};
+        HttpStream *st;
+        int status;
+        uint64_t clen;
+        if (http_stream_open(t->url, hdrs, off, off + len - 1, &st, &status, &clen) != 0) continue;
+        if (status != 206) {
+            http_stream_close(st);
+            dbg("tables: range %llu+%lu -> %d", (unsigned long long)off, (unsigned long)len, status);
+            if (status == 404 || status == 416) return -1;
+            continue;
         }
-        dbg("moov: at %llu, %llu bytes", (unsigned long long)o, (unsigned long long)z);
-        mkdir("sdmc:/3ds", 0777);
-        mkdir("sdmc:/3ds/shelf3ds", 0777);
-        mkdir(MOOV_DIR, 0777);
-        if (http_fetch_range_to_file(src->url, auth, o, z, path) != 0) { dbg("moov: download failed"); return STREAM_IO; }
-        moov_off = o;
-        moov_size = z;
-        f = fopen(offp, "w");
-        if (f) { fprintf(f, "%llu %llu\n", moov_off, moov_size); fclose(f); }
+        uint32_t got = 0;
+        while (got < len) {
+            int k = http_stream_read(st, dst + got, len - got, 8000);
+            if (k <= 0) break;
+            got += (uint32_t)k;
+        }
+        http_stream_close(st);
+        if (got == len) return (int)got;
+        dbg("tables: short read %lu of %lu at %llu", (unsigned long)got, (unsigned long)len, (unsigned long long)off);
     }
-    if (reader_file_open(&s->tables, &s->ftables, path, moov_off, src->size) != 0) return STREAM_IO;
-    s->tables_open = true;
-    if (aacs_open_at(&s->aac, &s->media, &s->tables, moov_off, moov_size) == 0) return 0;
-    dbg("moov: not AAC, probing MP3-in-MP4");
+    return -1;
+}
+
+static int open_remote_tables(Stream *s, const TrackSource *src, void (*auth)(char *, unsigned)) {
+    s->net = calloc(1, sizeof *s->net);
+    if (!s->net) return STREAM_ERR;
+    snprintf(s->net->url, sizeof s->net->url, "%s", src->url);
+    s->net->auth = auth;
+    s->bc = bc_new(src->size, TABLE_BLOCK, TABLE_BLOCKS, tables_fetch, s->net);
+    if (!s->bc) return STREAM_ERR;
+    s->tables = bc_reader(s->bc);
+    uint64_t moov_off, moov_size;
+    if (mp4_find_moov(&s->tables, &moov_off, &moov_size) != 0) {
+        dbg("moov: not found in %s (size %llu)", src->url, (unsigned long long)src->size);
+        return STREAM_IO;
+    }
+    int fetches;
+    uint64_t bytes;
+    if (aacs_open_at(&s->aac, &s->media, &s->tables, moov_off, moov_size) == 0) {
+        bc_stats(s->bc, &fetches, &bytes);
+        dbg("moov: at %llu, %llu bytes; tables ready after %d requests, %llu KB", (unsigned long long)moov_off,
+            (unsigned long long)moov_size, fetches, (unsigned long long)(bytes >> 10));
+        return 0;
+    }
     /* MP3-in-MP4 */
     static Mp4 probe;
     if (mp4_open_at(&probe, &s->tables, moov_off, moov_size) == 0 && probe.codec == MP4_MP3) {
@@ -98,6 +129,7 @@ static int open_remote_tables(Stream *s, const TrackSource *src, void (*auth)(ch
         s->kind = K_MP4MP3;
         return 0;
     }
+    dbg("moov: no AAC or MP3 audio track");
     return STREAM_UNSUPPORTED;
 }
 
@@ -204,7 +236,8 @@ static int read_mpg(Stream *s, int16_t *out, int max_frames, int *channels, int 
                 Mp4Cursor mark = mp4_tell(&s->aac.mp4);
                 int rc = mp4_next(&s->aac.mp4, &off, &size);
                 if (rc == 1) { s->feed_eof = true; continue; }
-                if (rc < 0 || size > sizeof s->in) return STREAM_ERR;
+                if (rc < 0) { mp4_restore(&s->aac.mp4, &mark); return STREAM_IO; } /* tables unreadable: retry */
+                if (size > sizeof s->in) return STREAM_ERR;
                 int k = reader_read_full(&s->media, off, s->in, size);
                 if (k != 0) {
                     /* not consumed: step the demuxer back so the sample is retried */
@@ -250,7 +283,9 @@ int stream_read(Stream *s, int16_t *out, int max_frames, int *channels, int *rat
 }
 
 void stream_interrupt(Stream *s, int on) {
-    if (s && s->hs) httpsrc_interrupt(s->hs, on);
+    if (!s) return;
+    if (s->hs) httpsrc_interrupt(s->hs, on);
+    if (s->net) s->net->interrupted = on;
 }
 
 int stream_net_state(Stream *s) {
@@ -264,5 +299,7 @@ void stream_close(Stream *s) {
     if (s->hs) httpsrc_close(s->hs);
     else reader_file_close(&s->fmedia);
     if (s->tables_open) reader_file_close(&s->ftables);
+    bc_free(s->bc);
+    free(s->net);
     free(s);
 }

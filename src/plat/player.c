@@ -149,7 +149,6 @@ static void build_sources(const OpenResult *r, PlayableBook *pb) {
         s->size = t->size;
         str_copy(s->ext, sizeof s->ext, t->ext);
         str_copy(s->codec, sizeof s->codec, t->codec);
-        snprintf(s->cache_key, sizeof s->cache_key, "%s_%s", r->book.id, t->ino);
         if (r->local) dl_track_path(r->book.id, i, t->ext, s->path, sizeof s->path);
         else absc_url(t->content_url, s->url, sizeof s->url);
     }
@@ -308,7 +307,7 @@ void player_init(Config *cfg, ProgressQueue *pq, void (*save_queue)(void)) {
     g_cfg = cfg;
     g_pq = pq;
     g_save_queue = save_queue;
-    P.speed = cfg->speed;
+    P.speed = player_speed_locked() ? 1.0f : cfg->speed;
     engine_set_auth(auth_cb);
 }
 
@@ -374,7 +373,10 @@ void player_chapter(int dir) {
     player_jump(target);
 }
 
+bool player_speed_locked(void) { return !sys_is_new3ds(); }
+
 void player_set_speed(float s) {
+    if (player_speed_locked()) s = 1.0f; /* Old 3DS: no CPU headroom to time-stretch while decoding */
     P.speed = s;
     g_cfg->speed = s;
     engine_set_speed(s);

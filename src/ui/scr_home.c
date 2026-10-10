@@ -102,7 +102,11 @@ static void setting_label(int i, char *name, char *val, int n) {
     switch (i) {
     case 0: strcpy(name, "Skip back"); snprintf(val, n, "%ds", g_cfg.skip_back); break;
     case 1: strcpy(name, "Skip forward"); snprintf(val, n, "%ds", g_cfg.skip_fwd); break;
-    case 2: strcpy(name, "Playback speed"); snprintf(val, n, "%.2g\xC3\x97", g_cfg.speed); break;
+    case 2:
+        strcpy(name, "Playback speed");
+        if (player_speed_locked()) snprintf(val, n, "1\xC3\x97 (Old 3DS)");
+        else snprintf(val, n, "%.2g\xC3\x97", g_cfg.speed);
+        break;
     case 3: strcpy(name, "Sync progress every"); snprintf(val, n, "%ds", g_cfg.sync_interval); break;
     case 4: strcpy(name, "Screen off when lid closes"); snprintf(val, n, "%s", g_cfg.screen_off ? "On" : "Off"); break;
     case 5: strcpy(name, g_confirm_logout ? "Press A again to log out" : "Log out"); snprintf(val, n, "%s", g_cfg.username); break;
@@ -118,7 +122,10 @@ static void setting_activate(int i) {
     switch (i) {
     case 0: g_cfg.skip_back = cfg_next_skip(g_cfg.skip_back); break;
     case 1: g_cfg.skip_fwd = cfg_next_skip(g_cfg.skip_fwd); break;
-    case 2: player_set_speed(cfg_next_speed(g_cfg.speed)); break;
+    case 2:
+        if (player_speed_locked()) app_toast("Old 3DS plays at 1x only");
+        else player_set_speed(cfg_next_speed(g_cfg.speed));
+        break;
     case 3: g_cfg.sync_interval = g_cfg.sync_interval >= 60 ? 10 : g_cfg.sync_interval >= 30 ? 60 : g_cfg.sync_interval >= 15 ? 30 : 15; break;
     case 4: g_cfg.screen_off = !g_cfg.screen_off; break;
     case 5:

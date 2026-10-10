@@ -23,17 +23,4 @@ int httpsrc_state(HttpSrc *s);
 /* Fraction of the read-ahead ring that is filled, 0..1 */
 float httpsrc_fill(HttpSrc *s);
 
-/* Reader over individual Range requests with a 4 KB cache: cheap probing of
- * remote files (e.g. walking MP4 top-level atoms to find the moov). */
-typedef struct {
-    char url[512];
-    void (*auth)(char *out, unsigned n);
-    uint8_t cache[4096];
-    uint64_t cstart;
-    uint32_t clen;
-} RangeReaderCtx;
-int range_reader_open(Reader *r, RangeReaderCtx *c, const char *url, uint64_t size, void (*auth)(char *, unsigned));
-/* Downloads bytes [from, from+len) to path. 0 ok. */
-int http_fetch_range_to_file(const char *url, void (*auth)(char *, unsigned), uint64_t from, uint64_t len, const char *path);
-
 #endif
