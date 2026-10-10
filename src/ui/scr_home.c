@@ -105,7 +105,7 @@ static void setting_label(int i, char *name, char *val, int n) {
     case 2:
         strcpy(name, "Playback speed");
         if (player_speed_locked()) snprintf(val, n, "1\xC3\x97 (Old 3DS)");
-        else snprintf(val, n, "%.2g\xC3\x97", g_cfg.speed);
+        else snprintf(val, n, "%g\xC3\x97", g_cfg.speed);
         break;
     case 3: strcpy(name, "Sync progress every"); snprintf(val, n, "%ds", g_cfg.sync_interval); break;
     case 4: strcpy(name, "Screen off when lid closes"); snprintf(val, n, "%s", g_cfg.screen_off ? "On" : "Off"); break;

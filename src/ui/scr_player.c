@@ -209,7 +209,7 @@ static void draw_top(void) {
     float chy = 162;
     float chx = tx;
     char sp[16];
-    snprintf(sp, sizeof sp, "%.2g\xC3\x97", player_speed());
+    snprintf(sp, sizeof sp, "%g\xC3\x97", player_speed());
     if (fabsf(player_speed() - 1) > 0.01f) {
         float w = gfx_text_width(F_UI, sp, 12) + 14;
         gfx_rrect(chx, chy, w, 18, 9, col_alpha(acc, 0.25f));
@@ -353,7 +353,7 @@ static void draw_bottom(void) {
 
     /* chips */
     char sp[16], sl[24];
-    snprintf(sp, sizeof sp, "%.2g\xC3\x97", player_speed());
+    snprintf(sp, sizeof sp, "%g\xC3\x97", player_speed());
     player_sleep_label(sl, sizeof sl);
     const char *labels[4] = {sp, sl, "Chapters", "Screen"};
     IconId icons[4] = {IC_SPEED, IC_MOON, IC_LIST, IC_SCREEN};
